@@ -1,9 +1,25 @@
 --[[
 	NEVERLOSE UI - PREVIEW / TEST SCRIPT
 	=====================================
-	Builds every NVM tab & component so you can see the whole thing in action.
-	Paste at the end of neverlose_modded.luau, RIGHT BEFORE "return NEVERLOSE".
+	Loads the library from GitHub, then builds every NVM tab & component
+	so you can see the whole thing in action.
+	Just execute this in your executor.
 ]]
+
+local URL = "https://raw.githubusercontent.com/rapzxcwxcorparation/UI-LibraryModded/refs/heads/main/neverlose_modded.luau"
+
+local src = game:HttpGet(URL .. "?v=" .. tostring(tick()))
+assert(type(src) == "string" and #src > 0, "Failed to fetch library source")
+
+local chunk, err = loadstring(src, "neverlose_modded")
+assert(chunk, "loadstring failed: " .. tostring(err))
+
+local NEVERLOSE = chunk()
+assert(type(NEVERLOSE) == "table", "Library did not return a table")
+
+-- =====================================================================
+-- PREVIEW
+-- =====================================================================
 
 local pvReady = false
 task.delay(1.2, function() pvReady = true end)
@@ -139,12 +155,12 @@ do
 end
 
 -- =====================================================================
--- TAB 6 : CONFIG (built-in from patch)
+-- TAB 6 : CONFIG (built-in from library)
 -- =====================================================================
 Window:AddConfigTab("Config")
 
 -- =====================================================================
--- TAB 7 : THEMES (built-in from patch)
+-- TAB 7 : THEMES (built-in from library)
 -- =====================================================================
 Window:AddThemeTab("Themes")
 
