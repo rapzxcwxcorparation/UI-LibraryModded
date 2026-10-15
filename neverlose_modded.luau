@@ -2175,6 +2175,7 @@ function NEVERLOSE:AddWindow(NameScriptHub,Text,UICustomSize)
 			Section.BorderColor3 = Color3.fromRGB(0, 0, 0)
 			Section.BorderSizePixel = 0
 			Section.Size = UDim2.new(0.970000029, 0, 0, 0)
+			Section.AutomaticSize = Enum.AutomaticSize.Y
 			Section.ZIndex = 5
 
 			UICorner.CornerRadius = UDim.new(0, 3)
@@ -2229,37 +2230,7 @@ function NEVERLOSE:AddWindow(NameScriptHub,Text,UICustomSize)
 			UICorner_2.Parent = lay
 
 			local function update_section_size(va)
-				if not va then
-					if Section.Visible and section_value then
-						local a=math.ceil(1)
-
-						for i,v:Frame|TextLabel in ipairs(Section:GetChildren()) do
-							if v:isA('Frame') or v:isA('TextLabel') then
-								if v.Visible then
-									pcall(function()
-										a=a+v.AbsoluteSize.Y*1.2
-									end)
-								end
-							end
-						end
-
-						TweenService:Create(Section,TweenInfo.new(0.2),{Size=UDim2.new(0.97,0,0,15+a)}):Play()
-					end
-				else
-					local a=math.ceil(1)
-
-					for i,v:Frame|TextLabel in ipairs(Section:GetChildren()) do
-						if v:isA('Frame') or v:isA('TextLabel') then
-							if v.Visible then
-								pcall(function()
-									a=a+v.AbsoluteSize.Y*1.2
-								end)
-							end
-						end
-					end
-
-					TweenService:Create(Section,TweenInfo.new(0.2),{Size=UDim2.new(0.97,0,0,15+a)}):Play()
-				end
+				-- Section uses AutomaticSize.Y now; nothing to do.
 			end
 
 			UIListLayout:GetPropertyChangedSignal('AbsoluteContentSize'):Connect(function()
@@ -2267,14 +2238,6 @@ function NEVERLOSE:AddWindow(NameScriptHub,Text,UICustomSize)
 			end)
 			Section.ChildAdded:Connect(function() task.defer(update_section_size) end)
 			Section.ChildRemoved:Connect(function() task.defer(update_section_size) end)
-
-			Section:GetPropertyChangedSignal('Size'):Connect(function()
-				if Section.Size.Y.Offset <= 1 then
-					Section.Visible=false
-				else
-					Section.Visible=true
-				end
-			end)
 
 			Section.InputBegan:Connect(update_section_size)
 
@@ -2294,6 +2257,7 @@ function NEVERLOSE:AddWindow(NameScriptHub,Text,UICustomSize)
 
 				Button.Name = "Button"
 				Button.Parent = Section
+				Button.LayoutOrder = NVMNextOrder(Section)
 				Button.BackgroundColor3 = NEVERLOSE.Themes.ButtonBlackgroundColor
 				Button.BackgroundTransparency = 0.550
 				Button.BorderColor3 = Color3.fromRGB(0, 0, 0)
@@ -2358,6 +2322,7 @@ function NEVERLOSE:AddWindow(NameScriptHub,Text,UICustomSize)
 
 				Label.Name = "Label"
 				Label.Parent = Section
+				Label.LayoutOrder = NVMNextOrder(Section)
 				Label.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
 				Label.BackgroundTransparency = 1.000
 				Label.BorderColor3 = Color3.fromRGB(0, 0, 0)
@@ -2431,6 +2396,7 @@ function NEVERLOSE:AddWindow(NameScriptHub,Text,UICustomSize)
 
 				Toggle.Name = "Toggle"
 				Toggle.Parent = Section
+				Toggle.LayoutOrder = NVMNextOrder(Section)
 				Toggle.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
 				Toggle.BackgroundTransparency = 1.000
 				Toggle.BorderColor3 = Color3.fromRGB(0, 0, 0)
@@ -2570,6 +2536,7 @@ function NEVERLOSE:AddWindow(NameScriptHub,Text,UICustomSize)
 
 				Keybind.Name = "Keybind"
 				Keybind.Parent = Section
+				Keybind.LayoutOrder = NVMNextOrder(Section)
 				Keybind.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
 				Keybind.BackgroundTransparency = 1.000
 				Keybind.BorderColor3 = Color3.fromRGB(0, 0, 0)
@@ -2740,6 +2707,7 @@ function NEVERLOSE:AddWindow(NameScriptHub,Text,UICustomSize)
 
 				Slider.Name = "Slider"
 				Slider.Parent = Section
+				Slider.LayoutOrder = NVMNextOrder(Section)
 				Slider.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
 				Slider.BackgroundTransparency = 1.000
 				Slider.BorderColor3 = Color3.fromRGB(0, 0, 0)
@@ -2963,6 +2931,7 @@ function NEVERLOSE:AddWindow(NameScriptHub,Text,UICustomSize)
 
 				Dropdown.Name = "Dropdown"
 				Dropdown.Parent = Section
+				Dropdown.LayoutOrder = NVMNextOrder(Section)
 				Dropdown.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
 				Dropdown.BackgroundTransparency = 1.000
 				Dropdown.BorderColor3 = Color3.fromRGB(0, 0, 0)
@@ -3371,8 +3340,8 @@ function NEVERLOSE:AddWindow(NameScriptHub,Text,UICustomSize)
 
 
 			function sectionfunc:Hide()
-				TweenService:Create(Section,TweenInfo.new(0.2),{Size=UDim2.new(0.97,0,0,1)}):Play()
 				section_value=false
+				Section.Visible=false
 				TweenService:Create(lay,TweenInfo.new(1),{BackgroundTransparency=1}):Play()
 				TweenService:Create(Section,TweenInfo.new(1),{BackgroundTransparency=1}):Play()
 				TweenService:Create(UIStroke,TweenInfo.new(1),{Transparency=1}):Play()
@@ -3380,7 +3349,8 @@ function NEVERLOSE:AddWindow(NameScriptHub,Text,UICustomSize)
 			end
 
 			function sectionfunc:Show()
-				update_section_size(true)section_value=true
+				section_value=true
+				Section.Visible=true
 				TweenService:Create(Header,TweenInfo.new(0.3),{TextTransparency=0}):Play()
 				TweenService:Create(lay,TweenInfo.new(1),{BackgroundTransparency=0}):Play()
 				TweenService:Create(Section,TweenInfo.new(1),{BackgroundTransparency=0}):Play()
