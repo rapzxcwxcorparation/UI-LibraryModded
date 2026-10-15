@@ -98,9 +98,15 @@ local function NVMRegKey(tab, sec, name)
 	return tostring(tab) .. "/" .. tostring(sec) .. "/" .. tostring(name)
 end
 
-local function NVMRegister(key, kind, get, set)
+local function NVMRegister(key, kind, get, set, owner)
 	if not NEVERLOSE.Flags then return end
-	NEVERLOSE.Flags[key] = { kind = kind, get = get, set = set }
+	local entry = { kind = kind, get = get, set = set }
+	NEVERLOSE.Flags[key] = entry
+	if owner then
+		owner.Destroying:Connect(function()
+			if NEVERLOSE.Flags[key] == entry then NEVERLOSE.Flags[key] = nil end
+		end)
+	end
 end
 
 local NVMOrderCache = setmetatable({}, { __mode = "k" })
@@ -237,7 +243,7 @@ local function NVMCreateToggle(section, name, default, callback)
 		local changed = ns ~= state
 		state = ns
 		render(true)
-		if (changed or force) and callback then NVMSafe(callback, state) end
+		if fire and (changed or force) and callback then NVMSafe(callback, state) end
 	end
 
 	on(hit.MouseButton1Click, function() set(not state, true) end)
@@ -504,7 +510,10 @@ local function NVMCreateTextBox(section, name, placeholder, default, callback)
 	NVMHover(row, on)
 
 	return NVMFinish(row, {
-		Set = function(_, v) input.Text = tostring(v or "") end,
+		Set = function(_, v, fire)
+			input.Text = tostring(v or "")
+			if fire and callback then NVMSafe(callback, input.Text, false) end
+		end,
 		Get = function() return input.Text end,
 	})
 end
@@ -512,6 +521,7 @@ end
 local function NVMCreateInput(section, name, default, minVal, maxVal, decimals, callback)
 	minVal = tonumber(minVal)
 	maxVal = tonumber(maxVal)
+	if minVal and maxVal and minVal > maxVal then minVal, maxVal = maxVal, minVal end
 	decimals = math.max(0, math.floor(tonumber(decimals) or 0))
 
 	local row = NVMCreateRow(section, 30)
@@ -563,7 +573,11 @@ local function NVMCreateInput(section, name, default, minVal, maxVal, decimals, 
 	NVMHover(row, on)
 
 	return NVMFinish(row, {
-		Set = function(_, v) input.Text = tostring(clamp(v)) end,
+		Set = function(_, v, fire)
+			local value = clamp(v)
+			input.Text = tostring(value)
+			if fire and callback then NVMSafe(callback, value, false) end
+		end,
 		Get = function() return clamp(input.Text) end,
 	})
 end
@@ -641,7 +655,7 @@ local function NVMCreateToggleKeybind(section, name, defaultToggle, defaultKey, 
 		local changed = ns ~= state
 		state = ns
 		renderToggle(true)
-		if (changed or force) and toggleCb then NVMSafe(toggleCb, state) end
+		if fire and (changed or force) and toggleCb then NVMSafe(toggleCb, state) end
 	end
 
 	on(hit.MouseButton1Click, function() setToggle(not state, true) end)
@@ -691,7 +705,23 @@ local function NVMCreateDropdown(section, name, options, default, callback, mult
 			selected = v ~= nil and v or options[1]
 		end
 	end
+
+	local function normalizeSelection()
+		if multi then
+			local available = {}
+			for _, option in ipairs(options) do available[option] = true end
+			for option in pairs(selected) do
+				if not available[option] then selected[option] = nil end
+			end
+		else
+			for _, option in ipairs(options) do
+				if selected == option then return end
+			end
+			selected = options[1]
+		end
+	end
 	resetSel(default)
+	normalizeSelection()
 
 	local row = NVMCreateRow(section, HEADER)
 	local on = NVMBinder(row)
@@ -794,17 +824,25 @@ local function NVMCreateDropdown(section, name, options, default, callback, mult
 	build()
 
 	return NVMFinish(row, {
-		Set = function(_, v, f) resetSel(v); refresh(); if f and callback then NVMSafe(callback, snapshot()) end end,
+		Set = function(_, v, f)
+			resetSel(v)
+			normalizeSelection()
+			refresh()
+			if f and callback then NVMSafe(callback, snapshot()) end
+		end,
 		Get = snapshot,
 		SetOptions = function(_, no, nd, f)
 			setExpanded(false)
 			options = type(no) == "table" and no or {}
-			resetSel(nd); build()
+			resetSel(nd)
+			normalizeSelection()
+			build()
 			if f and callback then NVMSafe(callback, snapshot()) end
 		end,
 		Refresh = function(_, no, f)
 			setExpanded(false)
 			options = type(no) == "table" and no or options
+			normalizeSelection()
 			build()
 			if f and callback then NVMSafe(callback, snapshot()) end
 		end,
@@ -884,28 +922,31 @@ local function NVMCreateColorPicker(section, name, default, callback, alpha)
 		AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -42, 0, 0),
 		Size = UDim2.new(0, 100, 0, HEADER), BackgroundTransparency = 1, AutoButtonColor = false,
 		Font = NVMFont(Enum.FontWeight.Medium), TextSize = 11, TextColor3 = NVMTheme.Muted,
-		TextXAlignment = Enum.TextXAlignment.Right, Text = "",
+		TextXAlignment = Enum.TextXAlignment.Right, Text = "", ZIndex = 2,
 	}, row)
 	on(hexLabel.MouseButton1Click, function()
 		local t = hexLabel.Text
 		if t == "" or t == "copied!" then return end
-		local ok = pcall(function()
-			if setclipboard then setclipboard(t) elseif toclipboard then toclipboard(t) end
-		end)
+		local copy = type(setclipboard) == "function" and setclipboard
+			or type(toclipboard) == "function" and toclipboard
+		if not copy then return end
+		local ok, err = pcall(copy, t)
 		if ok then
 			hexLabel.Text = "copied!"
 			task.delay(0.8, function() if hexLabel.Parent then hexLabel.Text = t end end)
+		else
+			warn("[NeverLose-Mod] Clipboard copy failed: " .. tostring(err))
 		end
 	end)
 
 	local swatch = NVMNew("Frame", {
 		AnchorPoint = Vector2.new(1, 0.5), Position = UDim2.new(1, -10, 0, 15),
-		Size = UDim2.fromOffset(24, 14), BackgroundColor3 = default, BorderSizePixel = 0,
+		Size = UDim2.fromOffset(24, 14), BackgroundColor3 = default, BorderSizePixel = 0, ZIndex = 2,
 	}, row)
 	NVMCorner(swatch, 0, 3); NVMStroke(swatch)
 
 	local header = NVMNew("TextButton", {
-		Text = "", BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, HEADER),
+		Text = "", BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, HEADER), ZIndex = 1,
 	}, row)
 
 	local holder = NVMNew("Frame", {
@@ -1036,7 +1077,7 @@ local function NVMCreateColorPicker(section, name, default, callback, alpha)
 	})
 end
 
-local function NVMCreateFolder(section, name, collapsed)
+local function NVMCreateFolder(section, name, collapsed, tabName, sectionName)
 	local HEADER = 24
 	local open = not collapsed
 	local holder = NVMNew("Frame", {
@@ -1084,21 +1125,93 @@ local function NVMCreateFolder(section, name, collapsed)
 
 	local on = NVMBinder(holder)
 	on(header.MouseButton1Click, function() open = not open; render() end)
-	listLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function() if open then render() end end)
+	on(listLayout:GetPropertyChangedSignal("AbsoluteContentSize"), function() if open then render() end end)
 	render()
+
+	local function scheduleRender()
+		task.defer(function()
+			if holder.Parent then render() end
+		end)
+	end
+
+	local function register(api, controlName, kind, get, set)
+		if tabName == nil or sectionName == nil then return end
+		local path = tostring(sectionName) .. "/" .. tostring(name)
+		NVMRegister(NVMRegKey(tabName, path, controlName), kind, get, set, api.Container)
+	end
 
 	local f = {}
 	f.Container = holder
 	f.Body = body
-	f.AddToggle = function(_, ...) local r = NVMCreateToggle(body, ...); task.defer(render); return r end
-	f.AddSlider = function(_, ...) local r = NVMCreateSlider(body, ...); task.defer(render); return r end
-	f.AddDropdown = function(_, ...) local r = NVMCreateDropdown(body, ...); task.defer(render); return r end
-	f.AddKeybind = function(_, ...) local r = NVMCreateKeybind(body, ...); task.defer(render); return r end
-	f.AddTextBox = function(_, ...) local r = NVMCreateTextBox(body, ...); task.defer(render); return r end
-	f.AddColorPicker = function(_, ...) local r = NVMCreateColorPicker(body, ...); task.defer(render); return r end
-	f.AddButton = function(_, ...) local r = NVMCreateButton(body, ...); task.defer(render); return r end
-	f.AddLabel = function(_, ...) local r = NVMCreateLabel(body, ...); task.defer(render); return r end
-	f.AddSeparator = function() local r = NVMCreateSeparator(body); task.defer(render); return r end
+	f.AddToggle = function(_, controlName, default, callback)
+		local r = NVMCreateToggle(body, controlName, default, callback)
+		register(r, controlName, "b", function() return r:Get() end, function(v) r:Set(v, true) end)
+		scheduleRender()
+		return r
+	end
+	f.AddSlider = function(_, controlName, minVal, maxVal, default, decimals, callback, suffix)
+		local r = NVMCreateSlider(body, controlName, minVal, maxVal, default, decimals, callback, suffix)
+		register(r, controlName, "n", function() return r:Get() end, function(v) r:Set(v, true) end)
+		scheduleRender()
+		return r
+	end
+	f.AddDropdown = function(_, controlName, options, default, callback, multi)
+		local r = NVMCreateDropdown(body, controlName, options, default, callback, multi)
+		register(r, controlName, multi and "t" or "s", function() return r:Get() end, function(v) r:Set(v, true) end)
+		scheduleRender()
+		return r
+	end
+	f.AddKeybind = function(_, controlName, default, callback, changed)
+		local r = NVMCreateKeybind(body, controlName, default, callback, changed)
+		register(r, controlName, "k", function() return r:Get() end, function(v) r:Set(v, true) end)
+		scheduleRender()
+		return r
+	end
+	f.AddTextBox = function(_, controlName, placeholder, default, callback)
+		local r = NVMCreateTextBox(body, controlName, placeholder, default, callback)
+		register(r, controlName, "s", function() return r:Get() end, function(v) r:Set(v, true) end)
+		scheduleRender()
+		return r
+	end
+	f.AddInput = function(_, controlName, default, minVal, maxVal, decimals, callback)
+		local r = NVMCreateInput(body, controlName, default, minVal, maxVal, decimals, callback)
+		register(r, controlName, "n", function() return r:Get() end, function(v) r:Set(v, true) end)
+		scheduleRender()
+		return r
+	end
+	f.AddColorPicker = function(_, controlName, default, callback, alpha)
+		local r = NVMCreateColorPicker(body, controlName, default, callback, alpha)
+		register(r, controlName, "c", function()
+			return r:Get():ToHex() .. "|" .. tostring(r:GetAlpha())
+		end, function(v)
+			if type(v) ~= "string" then return end
+			local hex, a = v:match("^(%x+)|(.+)$")
+			if hex then r:Set(Color3.fromHex(hex), true, tonumber(a)) end
+		end)
+		scheduleRender()
+		return r
+	end
+	f.AddToggleKeybind = function(_, controlName, defaultToggle, defaultKey, toggleCb, keyCb, changedCb)
+		local r = NVMCreateToggleKeybind(body, controlName, defaultToggle, defaultKey, toggleCb, keyCb, changedCb)
+		register(r, controlName, "tk", function()
+			return { t = r:Get(), k = r:GetKey() }
+		end, function(v)
+			if type(v) ~= "table" then return end
+			if v.t ~= nil then r:Set(v.t, true) end
+			if v.k ~= nil then r:SetKey(v.k, true) end
+		end)
+		scheduleRender()
+		return r
+	end
+	f.AddProgressBar = function(_, controlName, minVal, maxVal, default)
+		local r = NVMCreateProgressBar(body, controlName, minVal, maxVal, default)
+		register(r, controlName, "n", function() return r:Get() end, function(v) r:Set(v) end)
+		scheduleRender()
+		return r
+	end
+	f.AddButton = function(_, ...) local r = NVMCreateButton(body, ...); scheduleRender(); return r end
+	f.AddLabel = function(_, ...) local r = NVMCreateLabel(body, ...); scheduleRender(); return r end
+	f.AddSeparator = function() local r = NVMCreateSeparator(body); scheduleRender(); return r end
 	f.SetOpen = function(_, v) open = v and true or false; render() end
 	f.IsOpen = function() return open end
 	f.Destroy = function() holder:Destroy() end
@@ -1440,10 +1553,18 @@ local function NVMSerVal(kind, val)
 end
 
 local function NVMDesVal(kind, str)
-	if kind == "b" then return str == "1" end
-	if kind == "n" then return tonumber(str) or 0 end
+	if kind == "b" then
+		if str == "1" then return true end
+		if str == "0" then return false end
+		return nil
+	end
+	if kind == "n" then return tonumber(str) end
 	if kind == "s" then return str end
-	if kind == "k" then return Enum.KeyCode[str] or Enum.KeyCode.Unknown end
+	if kind == "k" then
+		local key = NVMResolveKey(str)
+		if key == Enum.KeyCode.Unknown and str ~= "Unknown" then return nil end
+		return key
+	end
 	if kind == "t" then
 		local out = {}
 		for p in str:gmatch("[^\1]+") do out[#out + 1] = p end
@@ -1452,7 +1573,10 @@ local function NVMDesVal(kind, str)
 	if kind == "c" then return str end
 	if kind == "tk" then
 		local b, k = str:match("^(%d)|(.+)$")
-		return { t = b == "1", k = Enum.KeyCode[k] or Enum.KeyCode.Unknown }
+		if b ~= "0" and b ~= "1" then return nil end
+		local key = NVMResolveKey(k)
+		if key == Enum.KeyCode.Unknown and k ~= "Unknown" then return nil end
+		return { t = b == "1", k = key }
 	end
 	return nil
 end
@@ -1465,15 +1589,25 @@ function NEVERLOSE:SaveConfig(name)
 	name = tostring(name or "default")
 	if type(writefile) ~= "function" then return false, "writefile unavailable" end
 	local lines = {}
+	local errors = {}
 	for k, v in pairs(NEVERLOSE.Flags) do
 		local ok, val = pcall(v.get)
 		if ok and val ~= nil then
-			lines[#lines + 1] = k .. "\t" .. v.kind .. "\t" .. NVMSerVal(v.kind, val)
+			local serialized, result = pcall(NVMSerVal, v.kind, val)
+			if serialized then
+				lines[#lines + 1] = k .. "\t" .. v.kind .. "\t" .. result
+			else
+				errors[#errors + 1] = tostring(k)
+			end
+		elseif not ok then
+			errors[#errors + 1] = tostring(k)
 		end
 	end
+	if #errors > 0 then return false, "failed to read flags: " .. table.concat(errors, ", ") end
 	local data = table.concat(lines, "\n")
-	local ok = pcall(writefile, NVMConfigPath(name), data)
-	if not ok then return false, "write failed" end
+	local ok, result = pcall(writefile, NVMConfigPath(name), data)
+	if not ok then return false, "write failed: " .. tostring(result) end
+	if result == false then return false, "write failed" end
 	return true
 end
 
@@ -1481,16 +1615,26 @@ function NEVERLOSE:LoadConfig(name)
 	name = tostring(name or "default")
 	local path = NVMConfigPath(name)
 	if type(isfile) ~= "function" or type(readfile) ~= "function" then return false, "readfile unavailable" end
-	if not isfile(path) then return false, "config not found" end
+	local exists, found = pcall(isfile, path)
+	if not exists then return false, "config check failed: " .. tostring(found) end
+	if not found then return false, "config not found" end
 	local ok, data = pcall(readfile, path)
-	if not ok or type(data) ~= "string" then return false, "read failed" end
+	if not ok then return false, "read failed: " .. tostring(data) end
+	if type(data) ~= "string" then return false, "read failed: invalid file data" end
+	local errors = {}
 	for line in data:gmatch("[^\n]+") do
 		local key, kind, raw = line:match("^([^\t]+)\t([^\t]+)\t(.*)$")
 		if key and kind and NEVERLOSE.Flags[key] then
-			local val = NVMDesVal(kind, raw)
-			if val ~= nil then pcall(NEVERLOSE.Flags[key].set, val) end
+			local decoded, val = pcall(NVMDesVal, kind, raw)
+			if decoded and val ~= nil then
+				local applied = pcall(NEVERLOSE.Flags[key].set, val)
+				if not applied then errors[#errors + 1] = key end
+			else
+				errors[#errors + 1] = key
+			end
 		end
 	end
+	if #errors > 0 then return false, "failed to apply flags: " .. table.concat(errors, ", ") end
 	return true
 end
 
@@ -1502,7 +1646,7 @@ function NEVERLOSE:ListConfigs()
 	local prefix = NEVERLOSE.ConfigPrefix
 	local ext = NEVERLOSE.ConfigExt
 	for _, f in ipairs(files) do
-		f = tostring(f)
+		f = tostring(f):gsub("\\", "/"):match("([^/]+)$") or tostring(f)
 		if f:sub(1, #prefix) == prefix and f:sub(-#ext) == ext then
 			out[#out + 1] = f:sub(#prefix + 1, #f - #ext)
 		end
@@ -1514,8 +1658,14 @@ function NEVERLOSE:DeleteConfig(name)
 	name = tostring(name or "default")
 	if type(delfile) ~= "function" then return false, "delfile unavailable" end
 	local path = NVMConfigPath(name)
-	if type(isfile) == "function" and not isfile(path) then return false, "not found" end
-	pcall(delfile, path)
+	if type(isfile) == "function" then
+		local checked, found = pcall(isfile, path)
+		if not checked then return false, "config check failed: " .. tostring(found) end
+		if not found then return false, "not found" end
+	end
+	local ok, result = pcall(delfile, path)
+	if not ok then return false, "delete failed: " .. tostring(result) end
+	if result == false then return false, "delete failed" end
 	return true
 end
 
@@ -1676,41 +1826,6 @@ function NEVERLOSE:AddWindow(NameScriptHub,Text,UICustomSize)
 		end)
 	end)
 
-	task.spawn(function()
-		local dragToggle = nil
-		local dragSpeed = 0.15
-		local dragStart = nil
-		local startPos = nil
-
-		local function updateInput(input)
-			local delta = input.Position - dragStart
-			local position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X,
-				startPos.Y.Scale, startPos.Y.Offset + delta.Y)
-			game:GetService('TweenService'):Create(Frame, TweenInfo.new(dragSpeed), {Position = position}):Play()
-		end
-
-		Frame.InputBegan:Connect(function(input)
-			if (input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch) and not toggle_valu then 
-				dragToggle = true
-				dragStart = input.Position
-				startPos = Frame.Position
-				input.Changed:Connect(function()
-					if input.UserInputState == Enum.UserInputState.End then
-						dragToggle = false
-					end
-				end)
-			end
-		end)
-
-		InputService.InputChanged:Connect(function(input)
-			if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
-				if dragToggle and not toggle_valu then
-					updateInput(input)
-				end
-			end
-		end)
-	end)
-
 	ScreenGui.Parent = CoreGui
 	ScreenGui.ResetOnSpawn = false
 	ScreenGui.IgnoreGuiInset = true
@@ -1719,6 +1834,8 @@ function NEVERLOSE:AddWindow(NameScriptHub,Text,UICustomSize)
 
 	local NVMScale = Instance.new("UIScale")
 	NVMScale.Parent = ScreenGui
+	local viewportConn
+	local currentCameraConn
 
 	local function apply_scale()
 		local cam = workspace.CurrentCamera
@@ -1735,11 +1852,15 @@ function NEVERLOSE:AddWindow(NameScriptHub,Text,UICustomSize)
 	apply_scale()
 
 	local function hook_cam(cam)
-		if cam then cam:GetPropertyChangedSignal("ViewportSize"):Connect(apply_scale) end
+		if viewportConn then
+			viewportConn:Disconnect()
+			viewportConn = nil
+		end
+		if cam then viewportConn = cam:GetPropertyChangedSignal("ViewportSize"):Connect(apply_scale) end
 	end
 
 	hook_cam(workspace.CurrentCamera)
-	workspace:GetPropertyChangedSignal("CurrentCamera"):Connect(function()
+	currentCameraConn = workspace:GetPropertyChangedSignal("CurrentCamera"):Connect(function()
 		hook_cam(workspace.CurrentCamera)
 		apply_scale()
 	end)
@@ -2158,7 +2279,7 @@ function NEVERLOSE:AddWindow(NameScriptHub,Text,UICustomSize)
 		end) 
 
 		function TabFunctions:AddSection(SectionName,parentname)
-			parentname = parentname or "left"
+			parentname = tostring(parentname or "left"):lower()
 
 			local Section = Instance.new("Frame")
 			local UICorner = Instance.new("UICorner")
@@ -2169,7 +2290,7 @@ function NEVERLOSE:AddWindow(NameScriptHub,Text,UICustomSize)
 			local UICorner_2 = Instance.new("UICorner")
 
 			Section.Name = "Section"
-			Section.Parent = (parentname=="left"and Left) or (parentname=="right"and Right) or nil
+			Section.Parent = parentname == "right" and Right or Left
 
 			Section.BackgroundColor3 = NEVERLOSE.Themes.SectionColor
 			Section.BorderColor3 = Color3.fromRGB(0, 0, 0)
@@ -2292,7 +2413,7 @@ function NEVERLOSE:AddWindow(NameScriptHub,Text,UICustomSize)
 				UIStroke.Parent = Button
 
 				cretate_button(Button).MouseButton1Click:Connect(function()
-					callback()
+					NVMSafe(callback)
 				end)
 
 				Button.MouseEnter:Connect(function()
@@ -2305,7 +2426,7 @@ function NEVERLOSE:AddWindow(NameScriptHub,Text,UICustomSize)
 
 				local button_func={}
 				function button_func:Fire(...)
-					callback(...)
+					NVMSafe(callback, ...)
 				end
 
 				function button_func:Text(a)
@@ -2382,6 +2503,7 @@ function NEVERLOSE:AddWindow(NameScriptHub,Text,UICustomSize)
 			end
 
 			function sectionfunc:AddToggle(ToggleName,Default,callback)
+				Default = Default and true or false
 				callback=callback or function()
 
 				end
@@ -2463,12 +2585,12 @@ function NEVERLOSE:AddWindow(NameScriptHub,Text,UICustomSize)
 				end
 
 				toggleval(Default,0)
-				callback(Default)
+				NVMSafe(callback, Default)
 				
 				cretate_button(Toggle).MouseButton1Click:Connect(function()
 					Default = not Default
 					toggleval(Default,0.1)
-					callback(Default)
+					NVMSafe(callback, Default)
 				end)
 
 				NVMRegister(NVMRegKey(TabNameString,SectionName,ToggleName),"b",
@@ -2476,8 +2598,9 @@ function NEVERLOSE:AddWindow(NameScriptHub,Text,UICustomSize)
 					function(v)
 						Default = v and true or false
 						toggleval(Default,0.1)
-						callback(Default)
-					end)
+						NVMSafe(callback, Default)
+					end,
+					Toggle)
 
 				local button_func = {}
 				function button_func:Text(a)
@@ -2485,15 +2608,15 @@ function NEVERLOSE:AddWindow(NameScriptHub,Text,UICustomSize)
 				end
 
 				function button_func:Value(a)
-					Default=a
-					toggleval(a,0.1)
-					callback(a)
+					Default = a and true or false
+					toggleval(Default,0.1)
+					NVMSafe(callback, Default)
 				end
 
 				function button_func:Status(val)
 					if val then
 						local dex = (Default==true and 0) or .3
-						TweenService:Create(Toggle,TweenInfo.new(.5,Enum.EasingStyle.Quint),{Size = UDim2.new(0.899999976, 0, -0.351014495, 0)}):Play()
+						TweenService:Create(Toggle,TweenInfo.new(.5,Enum.EasingStyle.Quint),{Size = UDim2.new(0.899999976, 0, 0, 28)}):Play()
 						TweenService:Create(LabelText,TweenInfo.new(1,Enum.EasingStyle.Quint),{TextTransparency = dex}):Play()
 
 						TweenService:Create(Effect,TweenInfo.new(0.4),{BackgroundTransparency=0}):Play()
@@ -2516,9 +2639,10 @@ function NEVERLOSE:AddWindow(NameScriptHub,Text,UICustomSize)
 				callback=callback or function()
 
 				end
+				Default = NVMResolveKey(Default)
 
 				local function gt(a:Enum.KeyCode)
-					if not a then
+					if not a or a == Enum.KeyCode.Unknown then
 						return "None"
 
 					else
@@ -2608,6 +2732,7 @@ function NEVERLOSE:AddWindow(NameScriptHub,Text,UICustomSize)
 				end
 
 				local Binding = false
+				local bindingConn
 				cretate_button(Keybind).MouseButton1Click:Connect(function()
 					if Binding then
 						return
@@ -2616,24 +2741,29 @@ function NEVERLOSE:AddWindow(NameScriptHub,Text,UICustomSize)
 
 					local targetloadded = nil
 
-					local hook = InputService.InputBegan:Connect(function(is)
-						if is.KeyCode ~= Enum.KeyCode.Unknown then
+					bindingConn = InputService.InputBegan:Connect(function(is)
+						if is.UserInputType == Enum.UserInputType.Keyboard and is.KeyCode ~= Enum.KeyCode.Unknown then
 							targetloadded = is.KeyCode
 						end
 					end)
 					TweenService:Create(LabelText,TweenInfo.new(0.3),{TextTransparency=0}):Play()
 					ValueText.Text = "..."
-					repeat task.wait() UpdateText() until targetloadded or not Binding
-					TweenService:Create(LabelText,TweenInfo.new(0.3),{TextTransparency=0.3}):Play()
+					repeat
+						task.wait()
+						if Binding and Keybind.Parent then UpdateText() end
+					until targetloadded or not Binding or not Keybind.Parent
 					Binding =false
-					if hook then
-						hook:Disconnect()
+					if bindingConn then
+						bindingConn:Disconnect()
+						bindingConn = nil
 					end
+					if not Keybind.Parent then return end
+					TweenService:Create(LabelText,TweenInfo.new(0.3),{TextTransparency=0.3}):Play()
 					if targetloadded then
 						ValueText.Text = gt(targetloadded)
 						Default = targetloadded
 						UpdateText() 
-						callback(targetloadded)
+						NVMSafe(callback, targetloadded)
 					end
 					return
 				end)
@@ -2646,24 +2776,27 @@ function NEVERLOSE:AddWindow(NameScriptHub,Text,UICustomSize)
 						return
 					end
 
-					if Input.KeyCode == Default then
-						callback(Input.KeyCode)
+					if not GameProcessed and Default ~= Enum.KeyCode.Unknown
+						and Input.UserInputType == Enum.UserInputType.Keyboard and Input.KeyCode == Default then
+						NVMSafe(callback, Input.KeyCode)
 					end
 				end)
 				Keybind.Destroying:Connect(function()
+					Binding = false
+					if bindingConn then bindingConn:Disconnect(); bindingConn = nil end
 					if keyConn then keyConn:Disconnect(); keyConn = nil end
 				end)
 
 				NVMRegister(NVMRegKey(TabNameString,SectionName,KeybindNameString),"k",
 					function() return Default end,
 					function(v)
-						if typeof(v) == "string" then v = Enum.KeyCode[v] end
-						if typeof(v) ~= "EnumItem" then return end
-						Default = v
-						ValueText.Text = gt(v)
+						local key = NVMResolveKey(v)
+						Default = key
+						ValueText.Text = gt(key)
 						UpdateText()
-						callback(v)
-					end)
+						NVMSafe(callback, key)
+					end,
+					Keybind)
 
 				local KeybindFunctions = {}
 
@@ -2673,19 +2806,20 @@ function NEVERLOSE:AddWindow(NameScriptHub,Text,UICustomSize)
 				end
 
 				function KeybindFunctions:Value(l)
-					ValueText.Text = gt(l)
-					Default = l
+					Default = NVMResolveKey(l)
+					ValueText.Text = gt(Default)
 					UpdateText() 
-					callback(l)
+					NVMSafe(callback, Default)
 				end
 
 				return KeybindFunctions
 			end
 
 			function sectionfunc:AddSlider(SliderNameString,Min,Max,Default,callback)
-				Min=Min or 1
-				Max=Max or 100
-				Default=Default or Min
+				Min=tonumber(Min) or 1
+				Max=tonumber(Max) or 100
+				if Max <= Min then Max = Min + 1 end
+				Default=math.clamp(math.round(tonumber(Default) or Min), Min, Max)
 				callback=callback or function()
 
 				end
@@ -2797,20 +2931,24 @@ function NEVERLOSE:AddWindow(NameScriptHub,Text,UICustomSize)
 				Inline.BorderColor3 = Color3.fromRGB(0, 0, 0)
 				Inline.BorderSizePixel = 0
 				Inline.Position = UDim2.new(0, 0, 0.5, 0)
-				Inline.Size = UDim2.new((Default/Max), 0, 1, 0)
+				Inline.Size = UDim2.fromScale(math.clamp((Default - Min) / (Max - Min), 0, 1), 1)
 				Inline.ZIndex = 5
 
 				UICorner_4.CornerRadius = UDim.new(0, 3)
 				UICorner_4.Parent = Inline
 
+				local function valueToScale(value)
+					return math.clamp((value - Min) / (Max - Min), 0, 1)
+				end
+
 				local function commitValueText()
 					local parsed = tonumber(ValueText.Text)
 					if not parsed then parsed = Default end
-					parsed = math.clamp(math.floor(parsed + 0.5), Min, Max)
+					parsed = math.clamp(math.round(parsed), Min, Max)
 					Default = parsed
 					ValueText.Text = tostring(parsed)
-					TweenService:Create(Inline, TweenInfo.new(0.1), {Size = UDim2.fromScale(math.clamp(parsed / Max, 0, 1), 1)}):Play()
-					callback(parsed)
+					TweenService:Create(Inline, TweenInfo.new(0.1), {Size = UDim2.fromScale(valueToScale(parsed), 1)}):Play()
+					NVMSafe(callback, parsed)
 				end
 
 				ValueText.Focused:Connect(function()
@@ -2850,12 +2988,14 @@ function NEVERLOSE:AddWindow(NameScriptHub,Text,UICustomSize)
 				local danger = false
 
 				local function update(Input)
-					local SizeScale = math.clamp((((Input.Position.X) - MoveFrame.AbsolutePosition.X) / MoveFrame.AbsoluteSize.X), 0, 1)
-					local Valuea = math.floor(((Max - Min) * SizeScale) + Min)
-					local Size = UDim2.fromScale(math.clamp(SizeScale+0.15,0,1), 1)
+					local width = MoveFrame.AbsoluteSize.X
+					if width <= 0 then return end
+					local SizeScale = math.clamp((Input.Position.X - MoveFrame.AbsolutePosition.X) / width, 0, 1)
+					local Valuea = math.clamp(math.round((Max - Min) * SizeScale + Min), Min, Max)
 					ValueText.Text = tostring(Valuea)
-					TweenService:Create(Inline,TweenInfo.new(0.1),{Size = Size}):Play()
-					callback(Valuea)
+					Default = Valuea
+					TweenService:Create(Inline,TweenInfo.new(0.1),{Size = UDim2.fromScale(valueToScale(Valuea), 1)}):Play()
+					NVMSafe(callback, Valuea)
 				end
 
 				Frame.InputBegan:Connect(function(Input)
@@ -2866,38 +3006,45 @@ function NEVERLOSE:AddWindow(NameScriptHub,Text,UICustomSize)
 					end
 				end)
 
-				InputService.InputEnded:Connect(function(Input)
+				local inputEndedConn = InputService.InputEnded:Connect(function(Input)
 					if danger and (Input.UserInputType == Enum.UserInputType.MouseButton1 or Input.UserInputType == Enum.UserInputType.Touch) then
 						danger = false
 						TweenService:Create(LabelText,TweenInfo.new(0.1),{TextTransparency=0.3}):Play()
 					end
 				end)
 
-				InputService.InputChanged:Connect(function(Input)
+				local inputChangedConn = InputService.InputChanged:Connect(function(Input)
 					if danger then
 						if (Input.UserInputType==Enum.UserInputType.MouseMovement or Input.UserInputType==Enum.UserInputType.Touch)  then
 							update(Input)
 						end
 					end
 				end)
+				Slider.Destroying:Connect(function()
+					danger = false
+					inputEndedConn:Disconnect()
+					inputChangedConn:Disconnect()
+				end)
 
 				NVMRegister(NVMRegKey(TabNameString,SectionName,SliderNameString),"n",
 					function() return tonumber(ValueText.Text) or Default end,
 					function(v)
-						local nv = math.clamp(tonumber(v) or Default, Min, Max)
+						local nv = math.clamp(math.round(tonumber(v) or Default), Min, Max)
 						Default = nv
-						ValueText.Text = tostring(math.floor(nv + 0.5))
-						Inline.Size = UDim2.fromScale(math.clamp(nv / Max, 0, 1), 1)
-						callback(nv)
-					end)
+						ValueText.Text = tostring(nv)
+						Inline.Size = UDim2.fromScale(valueToScale(nv), 1)
+						NVMSafe(callback, nv)
+					end,
+					Slider)
 
 				local func={}
 
 				function func:Value(s)
-					ValueText.Text = tostring(s)
-					Inline.Size=UDim2.fromScale((s/Max),1)
-
-					callback(s)
+					local value = math.clamp(math.round(tonumber(s) or Default), Min, Max)
+					Default = value
+					ValueText.Text = tostring(value)
+					Inline.Size = UDim2.fromScale(valueToScale(value), 1)
+					NVMSafe(callback, value)
 				end
 
 				function func:Text(t)
@@ -2909,7 +3056,7 @@ function NEVERLOSE:AddWindow(NameScriptHub,Text,UICustomSize)
 			end
 
 			function sectionfunc:AddDropdown(DropdownName,data,Default,callback,multi)
-				data=data or {}
+				data=type(data) == "table" and data or {}
 				multi = multi and true or false
 				Default=Default or (multi and {} or data[1])
 				callback=callback or function()
@@ -3203,11 +3350,13 @@ function NEVERLOSE:AddWindow(NameScriptHub,Text,UICustomSize)
 								end
 								ValueText.Text = #parts > 0 and table.concat(parts, ", ") or "None"
 								button.TextColor3 = choose[v] and NEVERLOSE.Themes.MainColor or NEVERLOSE.Themes.TextColor
-								callback(choose)
+								NVMSafe(callback, choose)
 							else
 								ValueText.Text=tostring(v)
 								choose=v
-								callback(v)
+								DropdownToggle = false
+								DropdownToggleEffect(false)
+								NVMSafe(callback, v)
 							end
 						end)
 
@@ -3235,18 +3384,42 @@ function NEVERLOSE:AddWindow(NameScriptHub,Text,UICustomSize)
 							local parts = {}
 							for _, opt in ipairs(data) do if choose[opt] then parts[#parts + 1] = tostring(opt) end end
 							ValueText.Text = #parts > 0 and table.concat(parts, ", ") or "None"
-							callback(choose)
+							NVMSafe(callback, choose)
 						else
-							ValueText.Text = tostring(v)
-							choose = v
-							callback(v)
+							local valid = false
+							for _, option in ipairs(data) do
+								if option == v then valid = true; break end
+							end
+							choose = valid and v or data[1]
+							ValueText.Text = choose ~= nil and tostring(choose) or "None"
+							NVMSafe(callback, choose)
 						end
-					end)
+					end,
+					Dropdown)
 
 				local func={}
 
 				function func:Refresh(new)
-					data=new or data
+					if type(new) == "table" then data = new end
+					if multi then
+						local available = {}
+						for _, option in ipairs(data) do available[option] = true end
+						for option in pairs(choose) do
+							if not available[option] then choose[option] = nil end
+						end
+						local parts = {}
+						for _, option in ipairs(data) do
+							if choose[option] then parts[#parts + 1] = tostring(option) end
+						end
+						ValueText.Text = #parts > 0 and table.concat(parts, ", ") or "None"
+					else
+						local valid = false
+						for _, option in ipairs(data) do
+							if option == choose then valid = true; break end
+						end
+						if not valid then choose = data[1] end
+						ValueText.Text = choose ~= nil and tostring(choose) or "None"
+					end
 					refresh()
 				end
 
@@ -3271,11 +3444,15 @@ function NEVERLOSE:AddWindow(NameScriptHub,Text,UICustomSize)
 							if choose[opt] then parts[#parts + 1] = tostring(opt) end
 						end
 						ValueText.Text = #parts > 0 and table.concat(parts, ", ") or "None"
-						callback(choose)
+						NVMSafe(callback, choose)
 					else
-						ValueText.Text=tostring(a)
-						choose=a
-						callback(a)
+						local valid = false
+						for _, option in ipairs(data) do
+							if option == a then valid = true; break end
+						end
+						choose = valid and a or data[1]
+						ValueText.Text = choose ~= nil and tostring(choose) or "None"
+						NVMSafe(callback, choose)
 					end
 				end
 
@@ -3286,7 +3463,8 @@ function NEVERLOSE:AddWindow(NameScriptHub,Text,UICustomSize)
 				local obj = NVMCreateTextBox(Section, TextBoxName, Placeholder, Default, Callback)
 				NVMRegister(NVMRegKey(TabNameString,SectionName,TextBoxName),"s",
 					function() return obj:Get() end,
-					function(v) obj:Set(v) end)
+					function(v) obj:Set(v, true) end,
+					obj.Container)
 				return obj
 			end
 
@@ -3302,7 +3480,8 @@ function NEVERLOSE:AddWindow(NameScriptHub,Text,UICustomSize)
 						if type(v) ~= "string" then return end
 						local hex, a = v:match("^(%x+)|(.+)$")
 						if hex then obj:Set(Color3.fromHex(hex), true, tonumber(a)) end
-					end)
+					end,
+					obj.Container)
 				return obj
 			end
 
@@ -3318,7 +3497,8 @@ function NEVERLOSE:AddWindow(NameScriptHub,Text,UICustomSize)
 				local obj = NVMCreateInput(Section, InputName, Default, Min, Max, Decimals, Callback)
 				NVMRegister(NVMRegKey(TabNameString,SectionName,InputName),"n",
 					function() return obj:Get() end,
-					function(v) obj:Set(v) end)
+					function(v) obj:Set(v, true) end,
+					obj.Container)
 				return obj
 			end
 
@@ -3330,12 +3510,13 @@ function NEVERLOSE:AddWindow(NameScriptHub,Text,UICustomSize)
 						if type(v) ~= "table" then return end
 						if v.t ~= nil then obj:Set(v.t, true) end
 						if v.k ~= nil then obj:SetKey(v.k, true) end
-					end)
+					end,
+					obj.Container)
 				return obj
 			end
 
 			function sectionfunc:AddFolder(FolderName, Collapsed)
-				return NVMCreateFolder(Section, FolderName, Collapsed)
+				return NVMCreateFolder(Section, FolderName, Collapsed, TabNameString, SectionName)
 			end
 
 
@@ -3445,12 +3626,17 @@ function NEVERLOSE:AddWindow(NameScriptHub,Text,UICustomSize)
 		end
 	end)
 
-	InputService.InputChanged:Connect(function(input)
+	local dragInputConn = InputService.InputChanged:Connect(function(input)
 		if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
 			if dragToggle then
 				updateInput(input)
 			end
 		end
+	end)
+	ScreenGui.Destroying:Connect(function()
+		dragInputConn:Disconnect()
+		if viewportConn then viewportConn:Disconnect() end
+		if currentCameraConn then currentCameraConn:Disconnect() end
 	end)
 
 	return WindowFunctinos
@@ -3627,7 +3813,16 @@ function NEVERLOSE:KeySystem(TitleName,LinkKey,callback)
 		end
 
 		asd=true
-		if callback(PasteKey.Text) then
+		local accepted = false
+		if type(callback) == "function" then
+			local ok, result = pcall(callback, PasteKey.Text)
+			if ok then
+				accepted = result
+			else
+				warn("[NeverLose-Mod] Key validation failed: " .. tostring(result))
+			end
+		end
+		if accepted then
 			TweenService:Create(Frame,TweenInfo.new(0.4,Enum.EasingStyle.Quint,Enum.EasingDirection.InOut),{Size=UDim2.new(0,0,0,0)}):Play()
 			function_call=function_call or function()
 
@@ -3638,7 +3833,7 @@ function NEVERLOSE:KeySystem(TitleName,LinkKey,callback)
 				ScreenGui:Destroy()
 			end)
 
-			function_call(PasteKey.Text)
+			NVMSafe(function_call, PasteKey.Text)
 
 			return
 
@@ -3650,40 +3845,36 @@ function NEVERLOSE:KeySystem(TitleName,LinkKey,callback)
 		asd=false
 	end)
 
-	task.spawn(function()
-		local dragToggle = nil
-		local dragSpeed = 0.2
-		local dragStart = nil
-		local startPos = nil
+	local dragToggle = false
+	local dragStart
+	local startPos
 
-		local function updateInput(input)
-			local delta = input.Position - dragStart
-			local position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X,
-				startPos.Y.Scale, startPos.Y.Offset + delta.Y)
-			game:GetService('TweenService'):Create(Frame, TweenInfo.new(dragSpeed), {Position = position}):Play()
-		end
+	local function updateInput(input)
+		local delta = input.Position - dragStart
+		local position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X,
+			startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+		TweenService:Create(Frame, TweenInfo.new(0.2), {Position = position}):Play()
+	end
 
-		Frame.InputBegan:Connect(function(input)
-			if (input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch) and not toggle_valu then 
-				dragToggle = true
-				dragStart = input.Position
-				startPos = Frame.Position
-				input.Changed:Connect(function()
-					if input.UserInputState == Enum.UserInputState.End then
-						dragToggle = false
-					end
-				end)
-			end
-		end)
-
-		InputService.InputChanged:Connect(function(input)
-			if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
-				if dragToggle then
-					updateInput(input)
+	Frame.InputBegan:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+			dragToggle = true
+			dragStart = input.Position
+			startPos = Frame.Position
+			input.Changed:Connect(function()
+				if input.UserInputState == Enum.UserInputState.End then
+					dragToggle = false
 				end
-			end
-		end)
+			end)
+		end
 	end)
+
+	local dragInputConn = InputService.InputChanged:Connect(function(input)
+		if (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) and dragToggle then
+			updateInput(input)
+		end
+	end)
+	ScreenGui.Destroying:Connect(function() dragInputConn:Disconnect() end)
 
 	function Functions:Callback(func)
 		function_call=func
@@ -3693,7 +3884,7 @@ function NEVERLOSE:KeySystem(TitleName,LinkKey,callback)
 end
 
 function NEVERLOSE:Notify(title, text, duration, kind)
-	duration = tonumber(duration) or 4
+	duration = math.max(0, tonumber(duration) or 4)
 	local ICONS = {
 		error = { tag = "[!]", color = Color3.fromRGB(255, 90, 90) },
 		success = { tag = "[+]", color = Color3.fromRGB(90, 220, 130) },
