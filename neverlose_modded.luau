@@ -93,6 +93,15 @@ local function NVMIsMove(input)
 		or input.UserInputType == Enum.UserInputType.Touch
 end
 
+local function NVMRegKey(tab, sec, name)
+	return tostring(tab) .. "/" .. tostring(sec) .. "/" .. tostring(name)
+end
+
+local function NVMRegister(key, kind, get, set)
+	if not NEVERLOSE.Flags then return end
+	NEVERLOSE.Flags[key] = { kind = kind, get = get, set = set }
+end
+
 local NVMOrderCache = setmetatable({}, { __mode = "k" })
 local function NVMNextOrder(frame)
 	local order = NVMOrderCache[frame]
@@ -855,23 +864,24 @@ local function NVMCreateKeybind(section, name, default, callback, changed)
 	})
 end
 
-local function NVMCreateColorPicker(section, name, default, callback)
-	local HEADER, SV_H, HUE_H = 30, 80, 10
-	local HOLDER_H = SV_H + 10 + HUE_H
+local function NVMCreateColorPicker(section, name, default, callback, alpha)
+	local HEADER, SV_H, HUE_H, ALPHA_H = 30, 80, 10, 10
+	local HOLDER_H = SV_H + 10 + HUE_H + 10 + ALPHA_H
 	local EXPANDED = HEADER + 4 + HOLDER_H + 8
 
 	default = typeof(default) == "Color3" and default or Color3.new(1, 1, 1)
+	alpha = math.clamp(tonumber(alpha) or 1, 0, 1)
 	local h, s, v = Color3.toHSV(default)
 	local expanded = false
 	local mode = nil
 
 	local row = NVMCreateRow(section, HEADER)
 	local on = NVMBinder(row)
-	NVMTitle(row, name, 110)
+	NVMTitle(row, name, 130)
 
 	local hexLabel = NVMNew("TextButton", {
 		AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -42, 0, 0),
-		Size = UDim2.new(0, 64, 0, HEADER), BackgroundTransparency = 1, AutoButtonColor = false,
+		Size = UDim2.new(0, 100, 0, HEADER), BackgroundTransparency = 1, AutoButtonColor = false,
 		Font = NVMFont(Enum.FontWeight.Medium), TextSize = 11, TextColor3 = NVMTheme.Muted,
 		TextXAlignment = Enum.TextXAlignment.Right, Text = "",
 	}, row)
@@ -949,14 +959,38 @@ local function NVMCreateColorPicker(section, name, default, callback)
 	NVMCorner(hueKnob, 0, 2)
 	NVMStroke(hueKnob, NVMTheme.Background, 1)
 
+	local alphaTrack = NVMNew("TextButton", {
+		Text = "", AutoButtonColor = false, BackgroundColor3 = NVMTheme.Stroke,
+		BorderSizePixel = 0, Position = UDim2.new(0, 0, 0, SV_H + 10 + HUE_H + 10),
+		Size = UDim2.new(1, 0, 0, ALPHA_H),
+	}, holder)
+	NVMCorner(alphaTrack, 1, 0)
+
+	local alphaFill = NVMNew("Frame", {
+		Size = UDim2.fromScale(alpha, 1), BackgroundColor3 = NVMTheme.Accent,
+		BorderSizePixel = 0,
+	}, alphaTrack)
+	NVMCorner(alphaFill, 1, 0)
+
+	local alphaKnob = NVMNew("Frame", {
+		AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.new(alpha, 0, 0.5, 0),
+		Size = UDim2.fromOffset(4, ALPHA_H + 4), BackgroundColor3 = Color3.new(1, 1, 1),
+		BorderSizePixel = 0,
+	}, alphaTrack)
+	NVMCorner(alphaKnob, 0, 2)
+	NVMStroke(alphaKnob, NVMTheme.Background, 1)
+
 	local function apply(fire)
 		local color = Color3.fromHSV(h, s, v)
 		swatch.BackgroundColor3 = color
+		swatch.BackgroundTransparency = 1 - alpha
 		svBox.BackgroundColor3 = Color3.fromHSV(h, 1, 1)
 		svKnob.Position = UDim2.fromScale(s, 1 - v)
 		hueKnob.Position = UDim2.new(h, 0, 0.5, 0)
-		hexLabel.Text = "#" .. string.upper(color:ToHex())
-		if fire and callback then NVMSafe(callback, color) end
+		alphaFill.Size = UDim2.fromScale(alpha, 1)
+		alphaKnob.Position = UDim2.new(alpha, 0, 0.5, 0)
+		hexLabel.Text = "#" .. string.upper(color:ToHex()) .. string.format("%02X", math.floor(alpha * 255 + 0.5))
+		if fire and callback then NVMSafe(callback, color, alpha) end
 	end
 
 	local function sample(pos)
@@ -969,6 +1003,10 @@ local function NVMCreateColorPicker(section, name, default, callback)
 			local o, sz = hueTrack.AbsolutePosition, hueTrack.AbsoluteSize
 			if sz.X <= 0 then return end
 			h = math.clamp((pos.X - o.X) / sz.X, 0, 1)
+		elseif mode == "alpha" then
+			local o, sz = alphaTrack.AbsolutePosition, alphaTrack.AbsoluteSize
+			if sz.X <= 0 then return end
+			alpha = math.clamp((pos.X - o.X) / sz.X, 0, 1)
 		else return end
 		apply(true)
 	end
@@ -979,16 +1017,21 @@ local function NVMCreateColorPicker(section, name, default, callback)
 	end)
 	on(svBox.InputBegan, function(i) if NVMIsPress(i) then mode = "sv"; sample(i.Position) end end)
 	on(hueTrack.InputBegan, function(i) if NVMIsPress(i) then mode = "hue"; sample(i.Position) end end)
+	on(alphaTrack.InputBegan, function(i) if NVMIsPress(i) then mode = "alpha"; sample(i.Position) end end)
 	on(UserInputService.InputChanged, function(i) if mode and NVMIsMove(i) then sample(i.Position) end end)
 	on(UserInputService.InputEnded, function(i) if NVMIsPress(i) then mode = nil end end)
 
 	NVMHover(row, on); apply(false)
 
 	return NVMFinish(row, {
-		Set = function(_, c, f)
-			if typeof(c) == "Color3" then h, s, v = Color3.toHSV(c); apply(f) end
+		Set = function(_, c, f, a)
+			if typeof(c) == "Color3" then h, s, v = Color3.toHSV(c) end
+			if a ~= nil then alpha = math.clamp(tonumber(a) or alpha, 0, 1) end
+			apply(f)
 		end,
 		Get = function() return Color3.fromHSV(h, s, v) end,
+		GetAlpha = function() return alpha end,
+		SetAlpha = function(_, a, f) alpha = math.clamp(tonumber(a) or alpha, 0, 1); apply(f) end,
 	})
 end
 
@@ -1181,6 +1224,10 @@ end
 
 NEVERLOSE = {
 	auto_function = {},
+	Flags = {},
+	CustomThemes = {},
+	ConfigPrefix = "NEVERLOSE_",
+	ConfigExt = ".cfg",
 	Themes = {
 		-- Pure black + white palette.
 		BlackgroundColor = Color3.fromRGB(0, 0, 0),
@@ -1204,6 +1251,12 @@ print(NEVERLOSE._Name..":",NEVERLOSE._Version..':',[[https://neverlose.cc/]],": 
 
 function NEVERLOSE:Theme(name)
 	name = tostring(name or "original"):lower()
+	if NEVERLOSE.CustomThemes and NEVERLOSE.CustomThemes[name] then
+		for k, v in pairs(NEVERLOSE.CustomThemes[name]) do
+			NEVERLOSE.Themes[k] = v
+		end
+		return
+	end
 	if name == "original" then
 		NEVERLOSE.Themes.BlackgroundColor = Color3.fromRGB(1, 17, 33)
 		NEVERLOSE.Themes.BlackColor = Color3.fromRGB(9, 9, 19)
@@ -1264,6 +1317,193 @@ function NEVERLOSE:Theme(name)
 		NEVERLOSE.Themes.Muted = Color3.fromRGB(180, 180, 195)
 		NEVERLOSE.Themes.HeadNameStrokeTransparency = 1
 	end
+
+	if name == "dracula" then
+		NEVERLOSE.Themes.BlackgroundColor = Color3.fromRGB(40, 42, 54)
+		NEVERLOSE.Themes.BlackColor = Color3.fromRGB(68, 71, 90)
+		NEVERLOSE.Themes.HeaderColor = Color3.fromRGB(40, 42, 54)
+		NEVERLOSE.Themes.TraceColor = Color3.fromRGB(98, 114, 164)
+		NEVERLOSE.Themes.MainColor = Color3.fromRGB(189, 147, 249)
+		NEVERLOSE.Themes.MainColorDrop = Color3.fromRGB(68, 71, 90)
+		NEVERLOSE.Themes.SectionColor = Color3.fromRGB(40, 42, 54)
+		NEVERLOSE.Themes.StrokeColor = Color3.fromRGB(68, 71, 90)
+		NEVERLOSE.Themes.ButtonBlackgroundColor = Color3.fromRGB(40, 42, 54)
+		NEVERLOSE.Themes.TextColor = Color3.fromRGB(248, 248, 242)
+		NEVERLOSE.Themes.Muted = Color3.fromRGB(98, 114, 164)
+		NEVERLOSE.Themes.HeadNameStrokeTransparency = 0.720
+	end
+
+	if name == "one_dark" or name == "onedark" then
+		NEVERLOSE.Themes.BlackgroundColor = Color3.fromRGB(40, 44, 52)
+		NEVERLOSE.Themes.BlackColor = Color3.fromRGB(33, 37, 43)
+		NEVERLOSE.Themes.HeaderColor = Color3.fromRGB(33, 37, 43)
+		NEVERLOSE.Themes.TraceColor = Color3.fromRGB(92, 99, 112)
+		NEVERLOSE.Themes.MainColor = Color3.fromRGB(97, 175, 239)
+		NEVERLOSE.Themes.MainColorDrop = Color3.fromRGB(33, 37, 43)
+		NEVERLOSE.Themes.SectionColor = Color3.fromRGB(40, 44, 52)
+		NEVERLOSE.Themes.StrokeColor = Color3.fromRGB(62, 68, 81)
+		NEVERLOSE.Themes.ButtonBlackgroundColor = Color3.fromRGB(40, 44, 52)
+		NEVERLOSE.Themes.TextColor = Color3.fromRGB(171, 178, 191)
+		NEVERLOSE.Themes.Muted = Color3.fromRGB(92, 99, 112)
+		NEVERLOSE.Themes.HeadNameStrokeTransparency = 0.720
+	end
+
+	if name == "nord" then
+		NEVERLOSE.Themes.BlackgroundColor = Color3.fromRGB(46, 52, 64)
+		NEVERLOSE.Themes.BlackColor = Color3.fromRGB(59, 66, 82)
+		NEVERLOSE.Themes.HeaderColor = Color3.fromRGB(59, 66, 82)
+		NEVERLOSE.Themes.TraceColor = Color3.fromRGB(76, 86, 106)
+		NEVERLOSE.Themes.MainColor = Color3.fromRGB(136, 192, 208)
+		NEVERLOSE.Themes.MainColorDrop = Color3.fromRGB(76, 86, 106)
+		NEVERLOSE.Themes.SectionColor = Color3.fromRGB(46, 52, 64)
+		NEVERLOSE.Themes.StrokeColor = Color3.fromRGB(76, 86, 106)
+		NEVERLOSE.Themes.ButtonBlackgroundColor = Color3.fromRGB(46, 52, 64)
+		NEVERLOSE.Themes.TextColor = Color3.fromRGB(236, 239, 244)
+		NEVERLOSE.Themes.Muted = Color3.fromRGB(76, 86, 106)
+		NEVERLOSE.Themes.HeadNameStrokeTransparency = 0.720
+	end
+
+	if name == "tokyo_night" or name == "tokyonight" or name == "tokyo" then
+		NEVERLOSE.Themes.BlackgroundColor = Color3.fromRGB(26, 27, 38)
+		NEVERLOSE.Themes.BlackColor = Color3.fromRGB(36, 40, 59)
+		NEVERLOSE.Themes.HeaderColor = Color3.fromRGB(26, 27, 38)
+		NEVERLOSE.Themes.TraceColor = Color3.fromRGB(86, 95, 137)
+		NEVERLOSE.Themes.MainColor = Color3.fromRGB(122, 162, 247)
+		NEVERLOSE.Themes.MainColorDrop = Color3.fromRGB(36, 40, 59)
+		NEVERLOSE.Themes.SectionColor = Color3.fromRGB(26, 27, 38)
+		NEVERLOSE.Themes.StrokeColor = Color3.fromRGB(65, 72, 104)
+		NEVERLOSE.Themes.ButtonBlackgroundColor = Color3.fromRGB(26, 27, 38)
+		NEVERLOSE.Themes.TextColor = Color3.fromRGB(192, 202, 245)
+		NEVERLOSE.Themes.Muted = Color3.fromRGB(86, 95, 137)
+		NEVERLOSE.Themes.HeadNameStrokeTransparency = 0.720
+	end
+
+	if name == "catppuccin" or name == "catppuccin_mocha" or name == "mocha" then
+		NEVERLOSE.Themes.BlackgroundColor = Color3.fromRGB(30, 30, 46)
+		NEVERLOSE.Themes.BlackColor = Color3.fromRGB(24, 24, 37)
+		NEVERLOSE.Themes.HeaderColor = Color3.fromRGB(24, 24, 37)
+		NEVERLOSE.Themes.TraceColor = Color3.fromRGB(127, 132, 156)
+		NEVERLOSE.Themes.MainColor = Color3.fromRGB(203, 166, 247)
+		NEVERLOSE.Themes.MainColorDrop = Color3.fromRGB(49, 50, 68)
+		NEVERLOSE.Themes.SectionColor = Color3.fromRGB(30, 30, 46)
+		NEVERLOSE.Themes.StrokeColor = Color3.fromRGB(69, 71, 90)
+		NEVERLOSE.Themes.ButtonBlackgroundColor = Color3.fromRGB(30, 30, 46)
+		NEVERLOSE.Themes.TextColor = Color3.fromRGB(205, 214, 244)
+		NEVERLOSE.Themes.Muted = Color3.fromRGB(127, 132, 156)
+		NEVERLOSE.Themes.HeadNameStrokeTransparency = 0.720
+	end
+end
+
+function NEVERLOSE:RegisterTheme(name, data)
+	name = tostring(name or ""):lower()
+	if name == "" or type(data) ~= "table" then return false end
+	NEVERLOSE.CustomThemes[name] = data
+	return true
+end
+
+function NEVERLOSE:ListThemes()
+	local out = { "original", "nightly", "dark", "white", "dracula", "one_dark", "nord", "tokyo_night", "catppuccin" }
+	for k in pairs(NEVERLOSE.CustomThemes) do out[#out + 1] = k end
+	return out
+end
+
+local function NVMSerVal(kind, val)
+	if kind == "b" then return val and "1" or "0" end
+	if kind == "n" then return tostring(val or 0) end
+	if kind == "s" then return tostring(val or "") end
+	if kind == "k" then return val and val.Name or "Unknown" end
+	if kind == "t" then
+		if type(val) ~= "table" then return "" end
+		local out = {}
+		for i, v in ipairs(val) do out[i] = tostring(v) end
+		return table.concat(out, "\1")
+	end
+	if kind == "c" then return tostring(val or "") end
+	if kind == "tk" then
+		if type(val) ~= "table" then return "0|Unknown" end
+		return (val.t and "1" or "0") .. "|" .. (val.k and val.k.Name or "Unknown")
+	end
+	return ""
+end
+
+local function NVMDesVal(kind, str)
+	if kind == "b" then return str == "1" end
+	if kind == "n" then return tonumber(str) or 0 end
+	if kind == "s" then return str end
+	if kind == "k" then return Enum.KeyCode[str] or Enum.KeyCode.Unknown end
+	if kind == "t" then
+		local out = {}
+		for p in str:gmatch("[^\1]+") do out[#out + 1] = p end
+		return out
+	end
+	if kind == "c" then return str end
+	if kind == "tk" then
+		local b, k = str:match("^(%d)|(.+)$")
+		return { t = b == "1", k = Enum.KeyCode[k] or Enum.KeyCode.Unknown }
+	end
+	return nil
+end
+
+local function NVMConfigPath(name)
+	return NEVERLOSE.ConfigPrefix .. tostring(name) .. NEVERLOSE.ConfigExt
+end
+
+function NEVERLOSE:SaveConfig(name)
+	name = tostring(name or "default")
+	if type(writefile) ~= "function" then return false, "writefile unavailable" end
+	local lines = {}
+	for k, v in pairs(NEVERLOSE.Flags) do
+		local ok, val = pcall(v.get)
+		if ok and val ~= nil then
+			lines[#lines + 1] = k .. "\t" .. v.kind .. "\t" .. NVMSerVal(v.kind, val)
+		end
+	end
+	local data = table.concat(lines, "\n")
+	local ok = pcall(writefile, NVMConfigPath(name), data)
+	if not ok then return false, "write failed" end
+	return true
+end
+
+function NEVERLOSE:LoadConfig(name)
+	name = tostring(name or "default")
+	local path = NVMConfigPath(name)
+	if type(isfile) ~= "function" or type(readfile) ~= "function" then return false, "readfile unavailable" end
+	if not isfile(path) then return false, "config not found" end
+	local ok, data = pcall(readfile, path)
+	if not ok or type(data) ~= "string" then return false, "read failed" end
+	for line in data:gmatch("[^\n]+") do
+		local key, kind, raw = line:match("^([^\t]+)\t([^\t]+)\t(.*)$")
+		if key and kind and NEVERLOSE.Flags[key] then
+			local val = NVMDesVal(kind, raw)
+			if val ~= nil then pcall(NEVERLOSE.Flags[key].set, val) end
+		end
+	end
+	return true
+end
+
+function NEVERLOSE:ListConfigs()
+	if type(listfiles) ~= "function" then return {} end
+	local ok, files = pcall(listfiles, ".")
+	if not ok or type(files) ~= "table" then return {} end
+	local out = {}
+	local prefix = NEVERLOSE.ConfigPrefix
+	local ext = NEVERLOSE.ConfigExt
+	for _, f in ipairs(files) do
+		f = tostring(f)
+		if f:sub(1, #prefix) == prefix and f:sub(-#ext) == ext then
+			out[#out + 1] = f:sub(#prefix + 1, #f - #ext)
+		end
+	end
+	return out
+end
+
+function NEVERLOSE:DeleteConfig(name)
+	name = tostring(name or "default")
+	if type(delfile) ~= "function" then return false, "delfile unavailable" end
+	local path = NVMConfigPath(name)
+	if type(isfile) == "function" and not isfile(path) then return false, "not found" end
+	pcall(delfile, path)
+	return true
 end
 
 function NEVERLOSE:AddWindow(NameScriptHub,Text,UICustomSize)
@@ -1353,7 +1593,7 @@ function NEVERLOSE:AddWindow(NameScriptHub,Text,UICustomSize)
 				if s then TweenService:Create(s,TweenInfo.new(0.3),{Transparency=0.900}):Play() end
 			end
 
-			TweenService:Create(UserName,TweenInfo.new(0.3),{TextTransparency=0,TNVMStrokeTransparency=1}):Play()
+			TweenService:Create(UserName,TweenInfo.new(0.3),{TextTransparency=0}):Play()
 			TweenService:Create(UserImage,TweenInfo.new(0.3),{ImageTransparency=0}):Play()
 			TweenService:Create(outlo,TweenInfo.new(0.3),{BackgroundTransparency=0.7}):Play()
 			TweenService:Create(outlo_2,TweenInfo.new(0.3),{BackgroundTransparency=0.7}):Play()
@@ -1375,7 +1615,7 @@ function NEVERLOSE:AddWindow(NameScriptHub,Text,UICustomSize)
 				if s then TweenService:Create(s,TweenInfo.new(0.3),{Transparency=1}):Play() end
 			end
 
-			TweenService:Create(UserName,TweenInfo.new(0.3),{TextTransparency=1,TNVMStrokeTransparency=1}):Play()
+			TweenService:Create(UserName,TweenInfo.new(0.3),{TextTransparency=1}):Play()
 			TweenService:Create(UserImage,TweenInfo.new(0.3),{ImageTransparency=1}):Play()
 			TweenService:Create(outlo,TweenInfo.new(0.3),{BackgroundTransparency=1}):Play()
 			TweenService:Create(outlo_2,TweenInfo.new(0.3),{BackgroundTransparency=1}):Play()
@@ -2249,6 +2489,14 @@ function NEVERLOSE:AddWindow(NameScriptHub,Text,UICustomSize)
 					callback(Default)
 				end)
 
+				NVMRegister(NVMRegKey(TabNameString,SectionName,ToggleName),"b",
+					function() return Default end,
+					function(v)
+						Default = v and true or false
+						toggleval(Default,0.1)
+						callback(Default)
+					end)
+
 				local button_func = {}
 				function button_func:Text(a)
 					LabelText.Text=tostring(a)
@@ -2428,6 +2676,17 @@ function NEVERLOSE:AddWindow(NameScriptHub,Text,UICustomSize)
 				Keybind.Destroying:Connect(function()
 					if keyConn then keyConn:Disconnect(); keyConn = nil end
 				end)
+
+				NVMRegister(NVMRegKey(TabNameString,SectionName,KeybindNameString),"k",
+					function() return Default end,
+					function(v)
+						if typeof(v) == "string" then v = Enum.KeyCode[v] end
+						if typeof(v) ~= "EnumItem" then return end
+						Default = v
+						ValueText.Text = gt(v)
+						UpdateText()
+						callback(v)
+					end)
 
 				local KeybindFunctions = {}
 
@@ -2650,6 +2909,16 @@ function NEVERLOSE:AddWindow(NameScriptHub,Text,UICustomSize)
 					end
 				end)
 
+				NVMRegister(NVMRegKey(TabNameString,SectionName,SliderNameString),"n",
+					function() return tonumber(ValueText.Text) or Default end,
+					function(v)
+						local nv = math.clamp(tonumber(v) or Default, Min, Max)
+						Default = nv
+						ValueText.Text = tostring(math.floor(nv + 0.5))
+						Inline.Size = UDim2.fromScale(math.clamp(nv / Max, 0, 1), 1)
+						callback(nv)
+					end)
+
 				local func={}
 
 				function func:Value(s)
@@ -2667,9 +2936,10 @@ function NEVERLOSE:AddWindow(NameScriptHub,Text,UICustomSize)
 				return func
 			end
 
-			function sectionfunc:AddDropdown(DropdownName,data,Default,callback)
+			function sectionfunc:AddDropdown(DropdownName,data,Default,callback,multi)
 				data=data or {}
-				Default=Default or data[1]
+				multi = multi and true or false
+				Default=Default or (multi and {} or data[1])
 				callback=callback or function()
 
 				end
@@ -2754,7 +3024,15 @@ function NEVERLOSE:AddWindow(NameScriptHub,Text,UICustomSize)
 				ValueText.Size = UDim2.new(0.697142839, 0, 0.998000145, 0)
 				ValueText.ZIndex = 6
 				ValueText.Font = Enum.Font.SourceSansSemibold
-				ValueText.Text = tostring(Default)
+				if multi then
+					local parts = {}
+					if type(Default) == "table" then
+						for _, v in ipairs(Default) do parts[#parts + 1] = tostring(v) end
+					end
+					ValueText.Text = #parts > 0 and table.concat(parts, ", ") or "None"
+				else
+					ValueText.Text = tostring(Default)
+				end
 				ValueText.TextColor3 = NEVERLOSE.Themes.TextColor
 				ValueText.TextScaled = true
 				ValueText.TextSize = 14.000
@@ -2805,7 +3083,15 @@ function NEVERLOSE:AddWindow(NameScriptHub,Text,UICustomSize)
 				UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
 				UIListLayout.Padding = UDim.new(0, 2)
 
-				local choose = Default
+				local choose
+				if multi then
+					choose = {}
+					if type(Default) == "table" then
+						for _, v in ipairs(Default) do choose[v] = true end
+					end
+				else
+					choose = Default
+				end
 				local DropdownToggle = false
 
 				DownBar:GetPropertyChangedSignal('Size'):Connect(function()
@@ -2938,10 +3224,24 @@ function NEVERLOSE:AddWindow(NameScriptHub,Text,UICustomSize)
 					for i,v in ipairs(data) do
 						local button=newbutton()
 						button.Text=tostring(v)
+						if multi and choose[v] then
+							button.TextColor3 = NEVERLOSE.Themes.MainColor
+						end
 						button.MouseButton1Click:Connect(function()
-							ValueText.Text=tostring(v)
-							choose=v
-							callback(v)
+							if multi then
+								choose[v] = (not choose[v]) or nil
+								local parts = {}
+								for _, opt in ipairs(data) do
+									if choose[opt] then parts[#parts + 1] = tostring(opt) end
+								end
+								ValueText.Text = #parts > 0 and table.concat(parts, ", ") or "None"
+								button.TextColor3 = choose[v] and NEVERLOSE.Themes.MainColor or NEVERLOSE.Themes.TextColor
+								callback(choose)
+							else
+								ValueText.Text=tostring(v)
+								choose=v
+								callback(v)
+							end
 						end)
 
 					end
@@ -2949,6 +3249,30 @@ function NEVERLOSE:AddWindow(NameScriptHub,Text,UICustomSize)
 
 				table.insert(NEVERLOSE.auto_function,auto_updatea)
 				refresh()
+
+				NVMRegister(NVMRegKey(TabNameString,SectionName,DropdownName), multi and "t" or "s",
+					function()
+						if multi then
+							local r = {}
+							for _, opt in ipairs(data) do if choose[opt] then r[#r + 1] = opt end end
+							return r
+						end
+						return choose
+					end,
+					function(v)
+						if multi then
+							choose = {}
+							if type(v) == "table" then for _, opt in ipairs(v) do choose[opt] = true end end
+							local parts = {}
+							for _, opt in ipairs(data) do if choose[opt] then parts[#parts + 1] = tostring(opt) end end
+							ValueText.Text = #parts > 0 and table.concat(parts, ", ") or "None"
+							callback(choose)
+						else
+							ValueText.Text = tostring(v)
+							choose = v
+							callback(v)
+						end
+					end)
 
 				local func={}
 
@@ -2968,20 +3292,49 @@ function NEVERLOSE:AddWindow(NameScriptHub,Text,UICustomSize)
 				end
 
 				function func:Value(a)
-					ValueText.Text=tostring(a)
-					choose=a
-					callback(a)
+					if multi then
+						choose = {}
+						if type(a) == "table" then
+							for _, v in ipairs(a) do choose[v] = true end
+						end
+						local parts = {}
+						for _, opt in ipairs(data) do
+							if choose[opt] then parts[#parts + 1] = tostring(opt) end
+						end
+						ValueText.Text = #parts > 0 and table.concat(parts, ", ") or "None"
+						callback(choose)
+					else
+						ValueText.Text=tostring(a)
+						choose=a
+						callback(a)
+					end
 				end
 
 				return func
 			end
 
 			function sectionfunc:AddTextBox(TextBoxName, Placeholder, Default, Callback)
-				return NVMCreateTextBox(Section, TextBoxName, Placeholder, Default, Callback)
+				local obj = NVMCreateTextBox(Section, TextBoxName, Placeholder, Default, Callback)
+				NVMRegister(NVMRegKey(TabNameString,SectionName,TextBoxName),"s",
+					function() return obj:Get() end,
+					function(v) obj:Set(v) end)
+				return obj
 			end
 
-			function sectionfunc:AddColorPicker(ColorName, Default, Callback)
-				return NVMCreateColorPicker(Section, ColorName, Default, Callback)
+			function sectionfunc:AddColorPicker(ColorName, Default, Callback, Alpha)
+				local obj = NVMCreateColorPicker(Section, ColorName, Default, Callback, Alpha)
+				NVMRegister(NVMRegKey(TabNameString,SectionName,ColorName),"c",
+					function()
+						local c = obj:Get()
+						local a = obj.GetAlpha and obj:GetAlpha() or 1
+						return c:ToHex() .. "|" .. tostring(a)
+					end,
+					function(v)
+						if type(v) ~= "string" then return end
+						local hex, a = v:match("^(%x+)|(.+)$")
+						if hex then obj:Set(Color3.fromHex(hex), true, tonumber(a)) end
+					end)
+				return obj
 			end
 
 			function sectionfunc:AddProgressBar(ProgressName, Min, Max, Default)
@@ -2993,11 +3346,23 @@ function NEVERLOSE:AddWindow(NameScriptHub,Text,UICustomSize)
 			end
 
 			function sectionfunc:AddInput(InputName, Default, Min, Max, Decimals, Callback)
-				return NVMCreateInput(Section, InputName, Default, Min, Max, Decimals, Callback)
+				local obj = NVMCreateInput(Section, InputName, Default, Min, Max, Decimals, Callback)
+				NVMRegister(NVMRegKey(TabNameString,SectionName,InputName),"n",
+					function() return obj:Get() end,
+					function(v) obj:Set(v) end)
+				return obj
 			end
 
 			function sectionfunc:AddToggleKeybind(ToggleName, DefaultToggle, DefaultKey, ToggleCb, KeyCb, ChangedCb)
-				return NVMCreateToggleKeybind(Section, ToggleName, DefaultToggle, DefaultKey, ToggleCb, KeyCb, ChangedCb)
+				local obj = NVMCreateToggleKeybind(Section, ToggleName, DefaultToggle, DefaultKey, ToggleCb, KeyCb, ChangedCb)
+				NVMRegister(NVMRegKey(TabNameString,SectionName,ToggleName),"tk",
+					function() return { t = obj:Get(), k = obj:GetKey() } end,
+					function(v)
+						if type(v) ~= "table" then return end
+						if v.t ~= nil then obj:Set(v.t, true) end
+						if v.k ~= nil then obj:SetKey(v.k, true) end
+					end)
+				return obj
 			end
 
 			function sectionfunc:AddFolder(FolderName, Collapsed)
@@ -3027,6 +3392,58 @@ function NEVERLOSE:AddWindow(NameScriptHub,Text,UICustomSize)
 
 
 		return TabFunctions
+	end
+
+	function WindowFunctinos:AddConfigTab(TabName)
+		local Tab = WindowFunctinos:AddTab(TabName or "Config", "list")
+		local sec = Tab:AddSection("Config Manager")
+
+		local cfgName = "default"
+
+		sec:AddTextBox("Config Name", "name...", "default", function(text)
+			cfgName = tostring(text or "default")
+		end)
+
+		sec:AddButton("Save Config", function()
+			local ok, err = NEVERLOSE:SaveConfig(cfgName)
+			NEVERLOSE:Notify("Config", ok and ("Saved: " .. cfgName) or ("Failed: " .. tostring(err)), 3, ok and "success" or "error")
+		end)
+
+		sec:AddButton("Load Config", function()
+			local ok, err = NEVERLOSE:LoadConfig(cfgName)
+			NEVERLOSE:Notify("Config", ok and ("Loaded: " .. cfgName) or ("Failed: " .. tostring(err)), 3, ok and "success" or "error")
+		end)
+
+		sec:AddButton("Delete Config", function()
+			local ok, err = NEVERLOSE:DeleteConfig(cfgName)
+			NEVERLOSE:Notify("Config", ok and ("Deleted: " .. cfgName) or ("Failed: " .. tostring(err)), 3, ok and "warning" or "error")
+		end)
+
+		sec:AddSeparator()
+
+		local list = sec:AddDropdown("Existing", NEVERLOSE:ListConfigs(), "default", function(v)
+			if v ~= nil then cfgName = tostring(v) end
+		end)
+
+		sec:AddButton("Refresh List", function()
+			list:Refresh(NEVERLOSE:ListConfigs())
+		end)
+
+		return Tab
+	end
+
+	function WindowFunctinos:AddThemeTab(TabName)
+		local Tab = WindowFunctinos:AddTab(TabName or "Themes", "earth")
+		local sec = Tab:AddSection("Theme Picker")
+
+		sec:AddDropdown("Active Theme", NEVERLOSE:ListThemes(), "original", function(v)
+			NEVERLOSE:Theme(v)
+			NEVERLOSE:Notify("Theme", "Applied: " .. tostring(v), 2, "info")
+		end)
+
+		sec:AddLabel("Built-in themes: original, nightly, dark, white, dracula, one_dark, nord, tokyo_night, catppuccin")
+
+		return Tab
 	end
 
 	function WindowFunctinos:Delete()
@@ -3304,209 +3721,6 @@ function NEVERLOSE:KeySystem(TitleName,LinkKey,callback)
 
 	return Functions
 end
-
-function NEVERLOSE:Notification()
-	local Notification_ = {
-		MaxNotifications = 5
-	}
-
-	local Notification = Instance.new("ScreenGui")
-	local MainFrame = Instance.new("Frame")
-	local UIListLayout = Instance.new("UIListLayout")
-
-	Notification.Name = "Notification"
-	Notification.Parent = CoreGui
-	Notification.ResetOnSpawn = false
-	Notification.ZIndexBehavior=Enum.ZIndexBehavior.Global
-	Notification.IgnoreGuiInset=true
-	ProtectGui(Notification)
-
-	MainFrame.Name = "MainFrame"
-	MainFrame.Parent = Notification
-	MainFrame.AnchorPoint = Vector2.new(1, 1)
-	MainFrame.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-	MainFrame.BackgroundTransparency = 1.000
-	MainFrame.BorderColor3 = Color3.fromRGB(0, 0, 0)
-	MainFrame.BorderSizePixel = 0
-	MainFrame.Position = UDim2.new(0.99000001, 0, 0.99000001, 0)
-	MainFrame.Size = UDim2.new(0.35, 0, 0.100000001, 0)
-
-	UIListLayout.Parent = MainFrame
-	UIListLayout.HorizontalAlignment = Enum.HorizontalAlignment.Right
-	UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
-	UIListLayout.VerticalAlignment = Enum.VerticalAlignment.Bottom
-	UIListLayout.Padding = UDim.new(0, 4)
-	function Notification_:Notify(Type,Head,Body,countdown)
-		local count = 0
-		for _, c in ipairs(MainFrame:GetChildren()) do
-			if c.Name == "Notify" then count = count + 1 end
-		end
-		if count >= Notification_.MaxNotifications then
-			return false
-		end
-
-		local typeicon = {
-			['error'] = "9072920609",
-			['success'] = "9073052584",
-			['warning'] = "9072448788",
-			['info'] = "9072944922"
-		}
-
-		local iconId = typeicon[tostring(Type or "error"):lower()]
-
-		local Notify = Instance.new("Frame")
-		local UICorner = Instance.new("UICorner")
-		local UIStroke = Instance.new("UIStroke")
-		local IconImage = Instance.new("ImageLabel")
-		local HeadTitle = Instance.new("TextLabel")
-		local BodyTitle = Instance.new("TextLabel")
-		local Countdown = Instance.new("Frame")
-		local CloseButton = Instance.new("ImageButton")
-
-		Notify.Name = "Notify"
-		Notify.Parent = MainFrame
-		Notify.BackgroundColor3 = NEVERLOSE.Themes.SectionColor
-		Notify.BackgroundTransparency = 0.100
-		Notify.BorderColor3 = Color3.fromRGB(0, 0, 0)
-		Notify.BorderSizePixel = 0
-		Notify.ClipsDescendants = true
-		Notify.Size = UDim2.new(0.75,0,0,0)
-
-		UICorner.CornerRadius = UDim.new(0, 3)
-		UICorner.Parent = Notify
-
-		UIStroke.Color = NEVERLOSE.Themes.StrokeColor
-		UIStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-		UIStroke.Parent = Notify
-
-		IconImage.Name = "IconImage"
-		IconImage.Parent = Notify
-		IconImage.AnchorPoint = Vector2.new(0.5, 0.5)
-		IconImage.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-		IconImage.BackgroundTransparency = 1.000
-		IconImage.BorderColor3 = Color3.fromRGB(0, 0, 0)
-		IconImage.BorderSizePixel = 0
-		IconImage.Position = UDim2.new(0.0549999997, 0, 0.5, 0)
-		IconImage.Size = UDim2.new(0.850000024, 0, 0.850000024, 0)
-		IconImage.SizeConstraint = Enum.SizeConstraint.RelativeYY
-		IconImage.ZIndex = 5
-		IconImage.Image = "rbxassetid://"..tostring(iconId)
-		IconImage.ImageTransparency=1
-		IconImage.ImageColor3=NEVERLOSE.Themes.MainColor
-
-		HeadTitle.Name = "HeadTitle"
-		HeadTitle.Parent = Notify
-		HeadTitle.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-		HeadTitle.BackgroundTransparency = 1.000
-		HeadTitle.BorderColor3 = Color3.fromRGB(0, 0, 0)
-		HeadTitle.BorderSizePixel = 0
-		HeadTitle.Position = UDim2.new(0.130612239, 0, 0.0750002638, 0)
-		HeadTitle.Size = UDim2.new(0.738775492, 0, 0.369384199, 0)
-		HeadTitle.ZIndex = 7
-		HeadTitle.Font = Enum.Font.SourceSansSemibold
-		HeadTitle.Text = Head or "Head"
-		HeadTitle.TextColor3 = NEVERLOSE.Themes.TextColor
-		HeadTitle.TextScaled = true
-		HeadTitle.TextSize = 14.000
-		HeadTitle.TextWrapped = true
-		HeadTitle.TextXAlignment = Enum.TextXAlignment.Left
-		HeadTitle.TextTransparency=1
-		BodyTitle.Name = "BodyTitle"
-		BodyTitle.Parent = Notify
-		BodyTitle.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-		BodyTitle.BackgroundTransparency = 1.000
-		BodyTitle.BorderColor3 = Color3.fromRGB(0, 0, 0)
-		BodyTitle.BorderSizePixel = 0
-		BodyTitle.Position = UDim2.new(0.130612239, 0, 0.444384605, 0)
-		BodyTitle.Size = UDim2.new(0.738775492, 0, 0.47554332, 0)
-		BodyTitle.ZIndex = 7
-		BodyTitle.Font = Enum.Font.SourceSansSemibold
-		BodyTitle.Text = Body or "Body"
-		BodyTitle.TextColor3 = NEVERLOSE.Themes.TextColor
-		BodyTitle.TextScaled = true
-		BodyTitle.TextSize = 14.000
-		BodyTitle.TextTransparency = 1
-		BodyTitle.TextWrapped = true
-		BodyTitle.TextXAlignment = Enum.TextXAlignment.Left
-
-		Countdown.Name = "Countdown"
-		Countdown.Parent = Notify
-		Countdown.AnchorPoint = Vector2.new(0, 1)
-		Countdown.BackgroundColor3 = NEVERLOSE.Themes.MainColor
-		Countdown.BorderColor3 = Color3.fromRGB(0, 0, 0)
-		Countdown.BorderSizePixel = 0
-		Countdown.Position = UDim2.new(0, 0, 1.07500005, 0)
-		Countdown.Size = UDim2.new(0, 0, 0.100000001, 0)
-		Countdown.ZIndex = 6
-		Countdown.BackgroundTransparency=1
-
-		CloseButton.Name = "CloseButton"
-		CloseButton.Parent = Notify
-		CloseButton.AnchorPoint = Vector2.new(0.5, 0.5)
-		CloseButton.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-		CloseButton.BackgroundTransparency = 1.000
-		CloseButton.BorderColor3 = Color3.fromRGB(0, 0, 0)
-		CloseButton.BorderSizePixel = 0
-		CloseButton.Position = UDim2.new(0.939999998, 0, 0.5, 0)
-		CloseButton.Size = UDim2.new(0.550000012, 0, 0.550000012, 0)
-		CloseButton.SizeConstraint = Enum.SizeConstraint.RelativeYY
-		CloseButton.ZIndex = 5
-		CloseButton.Image = "rbxassetid://9127564477"
-		CloseButton.ScaleType = Enum.ScaleType.Fit
-		CloseButton.ImageTransparency=1
-		
-		local currenttime = 0.3
-		local function start_vu()
-			TweenService:Create(Notify,TweenInfo.new(currenttime/2,Enum.EasingStyle.Quint),{Size=UDim2.new(0.99,0,0.75,0)}):Play()
-			TweenService:Create(UIStroke,TweenInfo.new(currenttime,Enum.EasingStyle.Quint,Enum.EasingDirection.In),{Transparency=0}):Play()
-			TweenService:Create(HeadTitle,TweenInfo.new(currenttime,Enum.EasingStyle.Quint,Enum.EasingDirection.In),{TextTransparency=0}):Play()
-			TweenService:Create(BodyTitle,TweenInfo.new(currenttime,Enum.EasingStyle.Quint,Enum.EasingDirection.In),{TextTransparency=0.3}):Play()
-			TweenService:Create(Countdown,TweenInfo.new(currenttime,Enum.EasingStyle.Quint,Enum.EasingDirection.In),{BackgroundTransparency=0}):Play()
-			TweenService:Create(IconImage,TweenInfo.new(currenttime,Enum.EasingStyle.Quint,Enum.EasingDirection.In),{ImageTransparency=0}):Play()
-			TweenService:Create(CloseButton,TweenInfo.new(currenttime,Enum.EasingStyle.Quint,Enum.EasingDirection.In),{ImageTransparency=0}):Play()
-		end
-
-
-		local function end_vu()
-			local trantween = TweenService:Create(Notify,TweenInfo.new(currenttime,Enum.EasingStyle.Quint,Enum.EasingDirection.In),{Size=UDim2.new(0.75,0,0,0)})
-			TweenService:Create(UIStroke,TweenInfo.new(currenttime/2,Enum.EasingStyle.Quad),{Transparency=1}):Play()
-			TweenService:Create(HeadTitle,TweenInfo.new(currenttime/2,Enum.EasingStyle.Quad),{TextTransparency=1}):Play()
-			TweenService:Create(BodyTitle,TweenInfo.new(currenttime/2,Enum.EasingStyle.Quad),{TextTransparency=1}):Play()
-			TweenService:Create(Countdown,TweenInfo.new(currenttime/2,Enum.EasingStyle.Quad),{BackgroundTransparency=1}):Play()
-			TweenService:Create(IconImage,TweenInfo.new(currenttime/2,Enum.EasingStyle.Quad),{ImageTransparency=1}):Play()
-			TweenService:Create(CloseButton,TweenInfo.new(currenttime/2,Enum.EasingStyle.Quad),{ImageTransparency=1}):Play()
-			trantween:Play()
-
-			trantween.Completed:Connect(function()
-				Notify:Destroy()
-			end)
-		end
-
-		start_vu()
-
-		task.spawn(function()
-			CloseButton.MouseButton1Click:Connect(end_vu)
-
-			if countdown then
-
-				pcall(function()
-					task.wait(1.3)
-					local tween = TweenService:Create(Countdown,TweenInfo.new(tonumber(countdown) or 3,Enum.EasingStyle.Linear),{Size=UDim2.new(1,0,0.1,0)
-					})
-
-					tween:Play()
-
-					tween.Completed:Wait()
-					task.wait(0.5)
-					end_vu()
-				end)
-			end
-		end)
-	end
-
-	return Notification_
-end
-
 
 function NEVERLOSE:Notify(title, text, duration, kind)
 	duration = tonumber(duration) or 4
