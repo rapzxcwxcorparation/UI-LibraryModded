@@ -26,7 +26,7 @@ local THEME_FALLBACK = {
     Stroke = Color3.fromRGB(52, 52, 58),
     Accent = Color3.fromRGB(64, 140, 255),
     Text = Color3.fromRGB(225, 225, 228),
-    Muted = Color3.fromRGB(135, 135, 144),
+    Muted = Color3.fromRGB(180, 180, 195),
 }
 
 local Theme = setmetatable({}, {
@@ -44,11 +44,17 @@ local Theme = setmetatable({}, {
 
 NEVERLOSE.ThemePalette = Theme
 
-local FONT_FAMILY = "rbxasset://fonts/families/SourceSansPro.json"
 local FAST = TweenInfo.new(0.16, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
 
+local FONT_MAP = {
+    [Enum.FontWeight.Bold] = Enum.Font.SourceSansBold,
+    [Enum.FontWeight.SemiBold] = Enum.Font.SourceSansSemibold,
+    [Enum.FontWeight.Medium] = Enum.Font.SourceSansSemibold,
+    [Enum.FontWeight.Regular] = Enum.Font.SourceSans,
+}
+
 local function font(weight)
-    return Font.new(FONT_FAMILY, weight or Enum.FontWeight.Regular, Enum.FontStyle.Normal)
+    return FONT_MAP[weight or Enum.FontWeight.Regular] or Enum.Font.SourceSans
 end
 
 local function new(class, props, parent)
@@ -291,122 +297,6 @@ local function findWindowParts(fn)
     return parts
 end
 
-local function createTitleTag(rootFrame, text, color)
-    color = color or Theme.Accent
-    local holder = new("Frame", {
-        Name = "ExtTitleTag",
-        AnchorPoint = Vector2.new(1, 0),
-        Position = UDim2.new(1, -3, 0.125, 0),
-        Size = UDim2.new(0, 0, 0, 16),
-        AutomaticSize = Enum.AutomaticSize.X,
-        BackgroundColor3 = color,
-        BackgroundTransparency = 0.15,
-        BorderSizePixel = 0,
-        ZIndex = 8,
-    }, rootFrame)
-    corner(holder, 1, 0)
-    local holderStroke = stroke(holder, color, 1)
-    new("UIPadding", {
-        PaddingLeft = UDim.new(0, 6),
-        PaddingRight = UDim.new(0, 6),
-    }, holder)
-    local label = new("TextLabel", {
-        Name = "Label",
-        BackgroundTransparency = 1,
-        Size = UDim2.new(0, 0, 1, 0),
-        AutomaticSize = Enum.AutomaticSize.X,
-        FontFace = font(Enum.FontWeight.Bold),
-        TextSize = 10,
-        TextColor3 = Theme.Text,
-        Text = tostring(text or "EXT"),
-        TextXAlignment = Enum.TextXAlignment.Center,
-        TextYAlignment = Enum.TextYAlignment.Center,
-        ZIndex = 9,
-    }, holder)
-    holder.BackgroundTransparency = 1
-    label.TextTransparency = 1
-    tween(holder, { BackgroundTransparency = 0.15 })
-    tween(label, { TextTransparency = 0 })
-    return {
-        Container = holder,
-        Label = label,
-        SetText = function(t)
-            label.Text = tostring(t or "")
-        end,
-        SetColor = function(c)
-            c = c or Theme.Accent
-            holder.BackgroundColor3 = c
-            if holderStroke then
-                holderStroke.Color = c
-            end
-        end,
-        Destroy = function()
-            holder:Destroy()
-        end,
-    }
-end
-
-local function createInfoPanel(rootFrame)
-    local panel = new("Frame", {
-        Name = "ExtInfoPanel",
-        AnchorPoint = Vector2.new(1, 1),
-        Position = UDim2.new(0.998, -3, 0.998, -3),
-        Size = UDim2.new(0.42, 0, 0, 0),
-        AutomaticSize = Enum.AutomaticSize.Y,
-        BackgroundColor3 = Theme.Background,
-        BackgroundTransparency = 0.35,
-        BorderSizePixel = 0,
-        ZIndex = 8,
-    }, rootFrame)
-    corner(panel, 0, 4)
-    stroke(panel)
-    new("UIListLayout", {
-        SortOrder = Enum.SortOrder.LayoutOrder,
-        Padding = UDim.new(0, 1),
-    }, panel)
-    new("UIPadding", {
-        PaddingTop = UDim.new(0, 5),
-        PaddingBottom = UDim.new(0, 5),
-        PaddingLeft = UDim.new(0, 8),
-        PaddingRight = UDim.new(0, 8),
-    }, panel)
-
-    local function mkrow(text, order, color)
-        return new("TextLabel", {
-            Name = "Row",
-            BackgroundTransparency = 1,
-            Size = UDim2.new(1, 0, 0, 14),
-            FontFace = font(Enum.FontWeight.Medium),
-            TextSize = 10,
-            TextColor3 = color or Theme.Text,
-            TextXAlignment = Enum.TextXAlignment.Left,
-            TextYAlignment = Enum.TextYAlignment.Center,
-            Text = tostring(text or ""),
-            LayoutOrder = order,
-        }, panel)
-    end
-
-    local titleRow = mkrow("Info", 1, Theme.Accent)
-    local execRow = mkrow("Executor: ...", 2, Theme.Text)
-    local uncRow = mkrow("UNC: ...", 3, Theme.Muted)
-    local suncRow = mkrow("sUNC: ...", 4, Theme.Muted)
-
-    return {
-        Panel = panel,
-        Set = function(name, version, unc, sunc)
-            execRow.Text = "Executor: " .. tostring(name) .. (version and (" v" .. tostring(version)) or "")
-            uncRow.Text = "UNC: " .. tostring(unc)
-            suncRow.Text = "sUNC: " .. tostring(sunc)
-        end,
-        SetTitle = function(t)
-            titleRow.Text = tostring(t or "Info")
-        end,
-        Destroy = function()
-            panel:Destroy()
-        end,
-    }
-end
-
 local function enhanceTabButton(btn)
     if btn:FindFirstChild("ExtIndicator") then
         return
@@ -487,60 +377,22 @@ end
 
 local function attachWindowExtras(window, originalFn)
     local parts = findWindowParts(originalFn)
-    if not parts or not parts.root then
-        warn("[NeverLose-Ext] window root not found — tag & info panel skipped")
+    if not parts then
         return false
     end
-
-    local existingTag = parts.root:FindFirstChild("ExtTitleTag")
-    if existingTag then
-        existingTag:Destroy()
+    local tabButtons = parts.tabButtons
+    if not tabButtons and parts.root then
+        tabButtons = parts.root:FindFirstChild("TabButtons")
     end
-
-    local tag = createTitleTag(parts.root, "EXT", Theme.Accent)
-
-    window.SetTag = function(_, text, color)
-        tag.SetText(text)
-        if color then
-            tag.SetColor(color)
+    if not tabButtons then
+        return false
+    end
+    enhanceTabButtons(tabButtons)
+    tabButtons.ChildAdded:Connect(function(child)
+        if child:IsA("Frame") and child.Name == "TabButton" then
+            task.defer(enhanceTabButton, child)
         end
-    end
-    window.GetTag = function()
-        return tag.Container
-    end
-
-    local existingPanel = parts.root:FindFirstChild("ExtInfoPanel")
-    if existingPanel then
-        existingPanel:Destroy()
-    end
-
-    local panel = createInfoPanel(parts.root)
-    local name, version = detectExecutor()
-    local unc, sunc = lookupStats(name)
-    panel.Set(name, version, unc, sunc)
-
-    window.SetInfo = function(_, newName, newVersion, newUNC, newSUNC)
-        panel.Set(
-            newName or name,
-            newVersion or version,
-            newUNC or unc,
-            newSUNC or sunc
-        )
-    end
-    window.GetInfo = function()
-        return panel.Panel
-    end
-
-    local tabButtons = parts.tabButtons or parts.root:FindFirstChild("TabButtons")
-    if tabButtons then
-        enhanceTabButtons(tabButtons)
-        tabButtons.ChildAdded:Connect(function(child)
-            if child:IsA("Frame") and child.Name == "TabButton" then
-                task.defer(enhanceTabButton, child)
-            end
-        end)
-    end
-
+    end)
     return true
 end
 
@@ -586,7 +438,7 @@ local function createRow(section, height, auto)
         BackgroundColor3 = Theme.Hover,
         BackgroundTransparency = 1,
         BorderSizePixel = 0,
-        ClipsDescendants = true,
+        ClipsDescendants = not auto,
         Size = UDim2.new(1, 0, 0, height),
         LayoutOrder = nextOrder(section),
     }, section)
@@ -625,7 +477,7 @@ local function createTitle(row, text, rightOffset)
     return new("TextLabel", {
         Name = "Title",
         Text = text or "",
-        FontFace = font(Enum.FontWeight.Medium),
+        Font = font(Enum.FontWeight.Medium),
         TextSize = 12,
         TextColor3 = Theme.Text,
         TextXAlignment = Enum.TextXAlignment.Left,
@@ -762,7 +614,7 @@ local function createSlider(section, name, minVal, maxVal, default, decimals, ca
         Position = UDim2.new(1, -10, 0, 0),
         Size = UDim2.new(0, 90, 0, 30),
         BackgroundTransparency = 1,
-        FontFace = font(Enum.FontWeight.Medium),
+        Font = font(Enum.FontWeight.Medium),
         TextSize = 11,
         TextColor3 = Theme.Muted,
         TextXAlignment = Enum.TextXAlignment.Right,
@@ -881,7 +733,7 @@ local function createProgressBar(section, name, minVal, maxVal, default)
         Position = UDim2.new(1, -10, 0, 0),
         Size = UDim2.new(0, 90, 0, 30),
         BackgroundTransparency = 1,
-        FontFace = font(Enum.FontWeight.Medium),
+        Font = font(Enum.FontWeight.Medium),
         TextSize = 11,
         TextColor3 = Theme.Muted,
         TextXAlignment = Enum.TextXAlignment.Right,
@@ -957,7 +809,7 @@ local function createDropdown(section, name, options, default, callback, multi)
         Position = UDim2.new(1, -26, 0, 0),
         Size = UDim2.new(0, 140, 0, HEADER),
         BackgroundTransparency = 1,
-        FontFace = font(),
+        Font = font(),
         TextSize = 11,
         TextColor3 = Theme.Muted,
         TextXAlignment = Enum.TextXAlignment.Right,
@@ -970,7 +822,7 @@ local function createDropdown(section, name, options, default, callback, multi)
         Position = UDim2.new(1, -10, 0, 0),
         Size = UDim2.fromOffset(14, HEADER),
         BackgroundTransparency = 1,
-        FontFace = font(Enum.FontWeight.Bold),
+        Font = font(Enum.FontWeight.Bold),
         TextSize = 11,
         TextColor3 = Theme.Muted,
         Text = "▾",
@@ -1082,7 +934,7 @@ local function createDropdown(section, name, options, default, callback, multi)
         for index, option in ipairs(options) do
             local button = new("TextButton", {
                 Text = tostring(option),
-                FontFace = font(),
+                Font = font(),
                 TextSize = 11,
                 TextColor3 = Theme.Muted,
                 TextXAlignment = Enum.TextXAlignment.Left,
@@ -1186,7 +1038,7 @@ local function createKeybind(section, name, default, callback, changed, ignorePr
         BackgroundColor3 = Theme.Surface,
         BorderSizePixel = 0,
         AutoButtonColor = false,
-        FontFace = font(Enum.FontWeight.Medium),
+        Font = font(Enum.FontWeight.Medium),
         TextSize = 11,
         TextColor3 = Theme.Text,
         TextTruncate = Enum.TextTruncate.AtEnd,
@@ -1273,7 +1125,7 @@ local function createTextBox(section, name, placeholder, default, callback)
         BorderSizePixel = 0,
         ClearTextOnFocus = false,
         ClipsDescendants = true,
-        FontFace = font(),
+        Font = font(),
         TextSize = 11,
         TextColor3 = Theme.Text,
         PlaceholderColor3 = Theme.Muted,
@@ -1333,7 +1185,7 @@ local function createColorPicker(section, name, default, callback)
         Size = UDim2.new(0, 64, 0, HEADER),
         BackgroundTransparency = 1,
         AutoButtonColor = false,
-        FontFace = font(Enum.FontWeight.Medium),
+        Font = font(Enum.FontWeight.Medium),
         TextSize = 11,
         TextColor3 = Theme.Muted,
         TextXAlignment = Enum.TextXAlignment.Right,
@@ -1533,7 +1385,7 @@ local function createButton(section, name, callback)
         BackgroundColor3 = Theme.Surface,
         BorderSizePixel = 0,
         Size = UDim2.fromScale(1, 1),
-        FontFace = font(Enum.FontWeight.Medium),
+        Font = font(Enum.FontWeight.Medium),
         TextSize = 12,
         TextColor3 = Theme.Text,
     }, row)
@@ -1574,7 +1426,7 @@ local function createLabel(section, text)
         BackgroundTransparency = 1,
         AutomaticSize = Enum.AutomaticSize.Y,
         Size = UDim2.new(1, 0, 0, 0),
-        FontFace = font(),
+        Font = font(),
         TextSize = 11,
         TextColor3 = Theme.Muted,
         TextWrapped = true,
@@ -1630,7 +1482,7 @@ local function createInput(section, name, default, minVal, maxVal, decimals, cal
         BorderSizePixel = 0,
         ClearTextOnFocus = false,
         ClipsDescendants = true,
-        FontFace = font(),
+        Font = font(),
         TextSize = 11,
         TextColor3 = Theme.Text,
         PlaceholderColor3 = Theme.Muted,
@@ -1721,7 +1573,7 @@ local function createToggleKeybind(section, name, defaultToggle, defaultKey, tog
         BackgroundColor3 = Theme.Surface,
         BorderSizePixel = 0,
         AutoButtonColor = false,
-        FontFace = font(Enum.FontWeight.Medium),
+        Font = font(Enum.FontWeight.Medium),
         TextSize = 11,
         TextColor3 = Theme.Text,
         Text = "",
@@ -1865,7 +1717,7 @@ local function createFolder(section, name, collapsed)
         Position = UDim2.new(0, 8, 0, HEADER / 2),
         Size = UDim2.fromOffset(12, 12),
         BackgroundTransparency = 1,
-        FontFace = font(Enum.FontWeight.Bold),
+        Font = font(Enum.FontWeight.Bold),
         TextSize = 10,
         TextColor3 = Theme.Accent,
         Text = open and "▾" or "▸",
@@ -1876,7 +1728,7 @@ local function createFolder(section, name, collapsed)
         Position = UDim2.new(0, 26, 0, 0),
         Size = UDim2.new(1, -34, 0, HEADER),
         BackgroundTransparency = 1,
-        FontFace = font(Enum.FontWeight.SemiBold),
+        Font = font(Enum.FontWeight.SemiBold),
         TextSize = 11,
         TextColor3 = Theme.Text,
         TextXAlignment = Enum.TextXAlignment.Left,
@@ -2014,7 +1866,8 @@ local function getNotifyHolder()
     notifyHolder = new("Frame", {
         AnchorPoint = Vector2.new(1, 1),
         Position = UDim2.new(1, -16, 1, -16),
-        Size = UDim2.new(0, 260, 1, -32),
+        Size = UDim2.new(0, 260, 0, 0),
+        AutomaticSize = Enum.AutomaticSize.Y,
         BackgroundTransparency = 1,
     }, gui)
     new("UIListLayout", {
@@ -2038,12 +1891,12 @@ function NEVERLOSE:Notify(title, text, duration, kind)
     }
     local iconInfo = kind and NOTIFY_ICONS[tostring(kind):lower()] or nil
 
-    local card = new("CanvasGroup", {
+    local card = new("Frame", {
         BackgroundColor3 = Theme.Background,
+        BackgroundTransparency = 1,
         BorderSizePixel = 0,
         AutomaticSize = Enum.AutomaticSize.Y,
         Size = UDim2.new(1, 0, 0, 0),
-        GroupTransparency = 1,
     }, getNotifyHolder())
     corner(card, 0, 4)
     stroke(card)
@@ -2062,7 +1915,7 @@ function NEVERLOSE:Notify(title, text, duration, kind)
         BackgroundTransparency = 1,
         AutomaticSize = Enum.AutomaticSize.Y,
         Size = UDim2.new(1, 0, 0, 0),
-        FontFace = font(Enum.FontWeight.SemiBold),
+        Font = font(Enum.FontWeight.SemiBold),
         TextSize = 12,
         TextColor3 = iconInfo and iconInfo.color or Theme.Text,
         TextWrapped = true,
@@ -2076,7 +1929,7 @@ function NEVERLOSE:Notify(title, text, duration, kind)
             BackgroundTransparency = 1,
             AutomaticSize = Enum.AutomaticSize.Y,
             Size = UDim2.new(1, 0, 0, 0),
-            FontFace = font(),
+            Font = font(),
             TextSize = 11,
             TextColor3 = Theme.Muted,
             TextWrapped = true,
@@ -2086,7 +1939,7 @@ function NEVERLOSE:Notify(title, text, duration, kind)
         }, card)
     end
 
-    tween(card, { GroupTransparency = 0 })
+    tween(card, { BackgroundTransparency = 0 })
 
     local dismiss = new("TextButton", {
         Text = "",
@@ -2096,7 +1949,7 @@ function NEVERLOSE:Notify(title, text, duration, kind)
     }, card)
     dismiss.MouseButton1Click:Connect(function()
         if card.Parent then
-            tween(card, { GroupTransparency = 1 })
+            tween(card, { BackgroundTransparency = 1 })
             task.delay(FAST.Time + 0.05, function()
                 if card.Parent then
                     card:Destroy()
@@ -2107,7 +1960,7 @@ function NEVERLOSE:Notify(title, text, duration, kind)
 
     task.delay(duration, function()
         if card.Parent then
-            tween(card, { GroupTransparency = 1 })
+            tween(card, { BackgroundTransparency = 1 })
             task.wait(FAST.Time + 0.05)
             card:Destroy()
         end
