@@ -16,6 +16,7 @@ local CoreGui = game:FindFirstChild('CoreGui') or LocalPlayer.PlayerGui;
 
 local ProtectGui = protectgui or (syn and syn.protect_gui) or (function() end);
 
+local NEVERLOSE
 local ExtTheme = setmetatable({}, {
 	__index = function(_, key)
 		local map = {
@@ -1178,7 +1179,7 @@ local function GetImageData(Name, Image)
 	end
 end
 
-local NEVERLOSE = {
+NEVERLOSE = {
 	auto_function = {},
 	Themes = {
 		-- Pure black + white palette.
@@ -2435,7 +2436,7 @@ function NEVERLOSE:AddWindow(NameScriptHub,Text,UICustomSize)
 				local Box = Instance.new("Frame")
 				local UICorner_2 = Instance.new("UICorner")
 				local UIStroke = Instance.new("UIStroke")
-				local ValueText = Instance.new("TextLabel")
+				local ValueText = Instance.new("TextBox")
 				local MoveFrame = Instance.new("Frame")
 				local UICorner_3 = Instance.new("UICorner")
 				local Inline = Instance.new("Frame")
@@ -2515,6 +2516,9 @@ function NEVERLOSE:AddWindow(NameScriptHub,Text,UICustomSize)
 				ValueText.TextScaled = true
 				ValueText.TextSize = 14.000
 				ValueText.TextWrapped = true
+				ValueText.ClearTextOnFocus = false
+				ValueText.TextEditable = true
+				ValueText.ClipsDescendants = true
 
 				MoveFrame.Name = "MoveFrame"
 				MoveFrame.Parent = Slider
@@ -2542,6 +2546,25 @@ function NEVERLOSE:AddWindow(NameScriptHub,Text,UICustomSize)
 
 				UICorner_4.CornerRadius = UDim.new(0, 3)
 				UICorner_4.Parent = Inline
+
+				local function commitValueText()
+					local parsed = tonumber(ValueText.Text)
+					if not parsed then parsed = Default end
+					parsed = math.clamp(math.floor(parsed + 0.5), Min, Max)
+					Default = parsed
+					ValueText.Text = tostring(parsed)
+					TweenService:Create(Inline, TweenInfo.new(0.1), {Size = UDim2.fromScale(math.clamp(parsed / Max, 0, 1), 1)}):Play()
+					callback(parsed)
+				end
+
+				ValueText.Focused:Connect(function()
+					TweenService:Create(UIStroke, TweenInfo.new(0.15), {Color = NEVERLOSE.Themes.MainColor}):Play()
+				end)
+
+				ValueText.FocusLost:Connect(function()
+					commitValueText()
+					TweenService:Create(UIStroke, TweenInfo.new(0.15), {Color = NEVERLOSE.Themes.StrokeColor}):Play()
+				end)
 
 				Cir.Name = "Cir"
 				Cir.Parent = Inline
