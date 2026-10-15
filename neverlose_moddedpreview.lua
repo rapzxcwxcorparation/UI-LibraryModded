@@ -7,7 +7,7 @@
            input, togglekeybind, folder, notify
     ============================================================]]
 
-local MODDED_URL = "https://raw.githubusercontent.com/rapzxcwxcorparation/UI-LibraryModded/refs/heads/main/neverlose_modded.lua"
+local MODDED_URL = "https://raw.githubusercontent.com/rapzxcwxcorparation/UI-LibraryModded/refs/heads/main/neverlose_modded.luau"
 
 local NEVERLOSE = loadstring(game:HttpGet(MODDED_URL))()
 
