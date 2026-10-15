@@ -1115,17 +1115,29 @@ local function NVMGetNotifyHolder()
 	})
 	if syn and syn.protect_gui then pcall(syn.protect_gui, gui) end
 	gui.Parent = (gethui and gethui()) or CoreGui
+	local function notifyW()
+		local cam = workspace.CurrentCamera
+		local vp = cam and cam.ViewportSize or Vector2.new(1280, 720)
+		return math.clamp(math.floor(vp.X * 0.52), 170, 240)
+	end
 	NVMNotifyHolder = NVMNew("Frame", {
-		AnchorPoint = Vector2.new(1, 1), Position = UDim2.new(1, -16, 1, -16),
-		Size = UDim2.new(0, 260, 0, 0), AutomaticSize = Enum.AutomaticSize.Y,
+		AnchorPoint = Vector2.new(1, 1), Position = UDim2.new(1, -10, 1, -10),
+		Size = UDim2.new(0, notifyW(), 0, 0), AutomaticSize = Enum.AutomaticSize.Y,
 		BackgroundTransparency = 1,
 	}, gui)
 	NVMNew("UIListLayout", {
 		SortOrder = Enum.SortOrder.LayoutOrder,
 		HorizontalAlignment = Enum.HorizontalAlignment.Right,
 		VerticalAlignment = Enum.VerticalAlignment.Bottom,
-		Padding = UDim.new(0, 6),
+		Padding = UDim.new(0, 5),
 	}, NVMNotifyHolder)
+	if workspace.CurrentCamera then
+		workspace.CurrentCamera:GetPropertyChangedSignal("ViewportSize"):Connect(function()
+			if NVMNotifyHolder and NVMNotifyHolder.Parent then
+				NVMNotifyHolder.Size = UDim2.new(0, notifyW(), 0, 0)
+			end
+		end)
+	end
 	return NVMNotifyHolder
 end
 
@@ -3730,14 +3742,14 @@ function NEVERLOSE:Notify(title, text, duration, kind)
 	NVMStroke(card)
 	NVMNew("UIListLayout", { SortOrder = Enum.SortOrder.LayoutOrder, Padding = UDim.new(0, 2) }, card)
 	NVMNew("UIPadding", {
-		PaddingTop = UDim.new(0, 8), PaddingBottom = UDim.new(0, 9),
-		PaddingLeft = UDim.new(0, 10), PaddingRight = UDim.new(0, 10),
+		PaddingTop = UDim.new(0, 6), PaddingBottom = UDim.new(0, 7),
+		PaddingLeft = UDim.new(0, 9), PaddingRight = UDim.new(0, 9),
 	}, card)
 
 	NVMNew("TextLabel", {
 		BackgroundTransparency = 1, AutomaticSize = Enum.AutomaticSize.Y,
 		Size = UDim2.new(1, 0, 0, 0), Font = NVMFont(Enum.FontWeight.SemiBold),
-		TextSize = 12, TextColor3 = icon and icon.color or NVMTheme.Text,
+		TextSize = 11, TextColor3 = icon and icon.color or NVMTheme.Text,
 		TextWrapped = true, TextXAlignment = Enum.TextXAlignment.Left,
 		Text = icon and (icon.tag .. " " .. tostring(title or "")) or tostring(title or ""),
 		LayoutOrder = 1,
@@ -3747,7 +3759,7 @@ function NEVERLOSE:Notify(title, text, duration, kind)
 		NVMNew("TextLabel", {
 			BackgroundTransparency = 1, AutomaticSize = Enum.AutomaticSize.Y,
 			Size = UDim2.new(1, 0, 0, 0), Font = NVMFont(),
-			TextSize = 11, TextColor3 = NVMTheme.Muted,
+			TextSize = 10, TextColor3 = NVMTheme.Muted,
 			TextWrapped = true, TextXAlignment = Enum.TextXAlignment.Left,
 			Text = tostring(text), LayoutOrder = 2,
 		}, card)
