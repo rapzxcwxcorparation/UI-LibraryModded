@@ -220,6 +220,18 @@ local function lookupStats(name)
     return "N/A", "N/A"
 end
 
+local function ascendToRoot(inst)
+    local guard = 0
+    while inst and guard < 32 do
+        guard += 1
+        if inst:IsA("Frame") and inst.Parent and inst.Parent:IsA("ScreenGui") then
+            return inst
+        end
+        inst = inst.Parent
+    end
+    return nil
+end
+
 local function findWindowParts(fn)
     if type(fn) ~= "function" or not getUpvalues then
         return nil
@@ -239,11 +251,41 @@ local function findWindowParts(fn)
                 parts.userImage = v
             elseif v:IsA("TextLabel") and v.Name == "UserName" then
                 parts.userName = v
+            elseif v:IsA("Frame") and v.Name == "TabHose" then
+                parts.tabHose = v
+            elseif v:IsA("ScrollingFrame") and v.Name == "TabButtons" then
+                parts.tabButtons = v
             elseif v:IsA("Frame") and v.Name == "Frame" and v.Parent and v.Parent:IsA("ScreenGui") then
                 parts.root = v
             elseif v:IsA("ScreenGui") then
                 parts.screenGui = v
             end
+        end
+    end
+    if not parts.root then
+        local candidates = { parts.tabHose, parts.headName, parts.tabButtons, parts.userData, parts.userImage, parts.userName }
+        for _, candidate in ipairs(candidates) do
+            local root = ascendToRoot(candidate)
+            if root then
+                parts.root = root
+                break
+            end
+        end
+    end
+    if not parts.screenGui then
+        if parts.root and parts.root.Parent then
+            parts.screenGui = parts.root.Parent
+        elseif parts.tabHose then
+            local root = ascendToRoot(parts.tabHose)
+            if root and root.Parent then
+                parts.screenGui = root.Parent
+            end
+        end
+    end
+    if not parts.tabButtons and parts.root then
+        local tb = parts.root:FindFirstChild("TabButtons")
+        if tb then
+            parts.tabButtons = tb
         end
     end
     return parts
@@ -446,6 +488,7 @@ end
 local function attachWindowExtras(window, originalFn)
     local parts = findWindowParts(originalFn)
     if not parts or not parts.root then
+        warn("[NeverLose-Ext] window root not found — tag & info panel skipped")
         return false
     end
 
@@ -488,7 +531,7 @@ local function attachWindowExtras(window, originalFn)
         return panel.Panel
     end
 
-    local tabButtons = parts.root:FindFirstChild("TabButtons")
+    local tabButtons = parts.tabButtons or parts.root:FindFirstChild("TabButtons")
     if tabButtons then
         enhanceTabButtons(tabButtons)
         tabButtons.ChildAdded:Connect(function(child)
