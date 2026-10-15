@@ -10,6 +10,7 @@
 local LocalPlayer = game:GetService('Players').LocalPlayer;
 local Mouse = LocalPlayer:GetMouse();
 local InputService = game:GetService('UserInputService');
+local UserInputService = InputService;
 local TextService = game:GetService('TextService');
 local TweenService = game:GetService('TweenService');
 local CoreGui = game:FindFirstChild('CoreGui') or LocalPlayer.PlayerGui;
