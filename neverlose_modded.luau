@@ -1743,7 +1743,7 @@ function NEVERLOSE:AddWindow(NameScriptHub,Text,UICustomSize)
 	local function ui_toggleong(val)
 		local uptime=1.4
 		if val then
-			TweenService:Create(Frame,TweenInfo.new(uptime,Enum.EasingStyle.Quint),{Size=ooldsize,Position=UDim2.new(0.5,0,0.5,0)}):Play()
+			TweenService:Create(Frame,TweenInfo.new(uptime,Enum.EasingStyle.Quint),{Size=ooldsize}):Play()
 			TweenService:Create(HeadName,TweenInfo.new(uptime/3,Enum.EasingStyle.Quint),{Size=UDim2.new(0.205458686, 0, 0.133462012, 0),Position=UDim2.new(0.0100000342, 0, 0.010000146, 0)}):Play()
 
 
@@ -1766,7 +1766,7 @@ function NEVERLOSE:AddWindow(NameScriptHub,Text,UICustomSize)
 			TweenService:Create(DropShadow,TweenInfo.new(0.3),{ImageTransparency=0.86}):Play()
 
 		else
-			TweenService:Create(Frame,TweenInfo.new(uptime,Enum.EasingStyle.Quint),{Size=UDim2.new(0.14, 0,0.14, 0),Position=oldPositionClose}):Play()
+			TweenService:Create(Frame,TweenInfo.new(uptime,Enum.EasingStyle.Quint),{Size=UDim2.new(0.14, 0,0.14, 0)}):Play()
 			TweenService:Create(HeadName,TweenInfo.new(uptime/1.2,Enum.EasingStyle.Quint),{Size=UDim2.new(0.9, 0,0.5, 0),Position=UDim2.new(0.046,0,0.24,0)}):Play()
 
 			TweenService:Create(TabHose,TweenInfo.new(0.3),{Position=UDim2.new(1.5,0,0.143,0)}):Play()
@@ -2448,7 +2448,8 @@ function NEVERLOSE:AddWindow(NameScriptHub,Text,UICustomSize)
 				Label.BackgroundTransparency = 1.000
 				Label.BorderColor3 = Color3.fromRGB(0, 0, 0)
 				Label.BorderSizePixel = 0
-				Label.Size = UDim2.new(0.899999976, 0, 0, 22)
+				Label.AutomaticSize = Enum.AutomaticSize.Y
+				Label.Size = UDim2.new(0.899999976, 0, 0, 0)
 				Label.ZIndex = 5
 
 				UICorner.CornerRadius = UDim.new(0, 3)
@@ -2456,33 +2457,23 @@ function NEVERLOSE:AddWindow(NameScriptHub,Text,UICustomSize)
 
 				LabelText.Name = "LabelText"
 				LabelText.Parent = Label
-				LabelText.AnchorPoint = Vector2.new(0.5, 0.5)
+				LabelText.AnchorPoint = Vector2.new(0, 0)
 				LabelText.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
 				LabelText.BackgroundTransparency = 1.000
 				LabelText.BorderColor3 = Color3.fromRGB(0, 0, 0)
 				LabelText.BorderSizePixel = 0
-				LabelText.Position = UDim2.new(0.5, 0, 0.5, 0)
-				LabelText.Size = UDim2.new(1, 0, 0.649999976, 0)
+				LabelText.Position = UDim2.new(0, 8, 0, 5)
+				LabelText.Size = UDim2.new(1, -16, 0, 0)
+				LabelText.AutomaticSize = Enum.AutomaticSize.Y
 				LabelText.ZIndex = 6
 				LabelText.Font = Enum.Font.SourceSansSemibold
 				LabelText.Text = LabelNameString or"Label"
 				LabelText.TextColor3 = NEVERLOSE.Themes.TextColor
-				LabelText.TextScaled = true
-				LabelText.TextSize = 14.000
+				LabelText.TextSize = 11
 				LabelText.TextTransparency = 0.300
 				LabelText.TextWrapped = true
 				LabelText.TextXAlignment = Enum.TextXAlignment.Left
-				update_section_size(
-
-				)
-
-				LabelText:GetPropertyChangedSignal('TextTransparency'):Connect(function()
-					if LabelText.TextTransparency <= 0.99 then
-						Label.Visible=true
-					else
-						Label.Visible=false
-					end
-				end)
+				LabelText.TextYAlignment = Enum.TextYAlignment.Top
 
 				local button_func = {}
 				function button_func:Text(a)
@@ -2491,11 +2482,10 @@ function NEVERLOSE:AddWindow(NameScriptHub,Text,UICustomSize)
 
 				function button_func:Status(val)
 					if val then
-						TweenService:Create(Label,TweenInfo.new(1,Enum.EasingStyle.Quint),{Size = UDim2.new(0.899999976, 0, 0, 22)}):Play()
-						TweenService:Create(LabelText,TweenInfo.new(0.7,Enum.EasingStyle.Quint),{TextTransparency = 0.3}):Play()
+						Label.Visible = true
+						TweenService:Create(LabelText,TweenInfo.new(0.3,Enum.EasingStyle.Quint),{TextTransparency = 0.3}):Play()
 					else
-						TweenService:Create(Label,TweenInfo.new(.8,Enum.EasingStyle.Quint),{Size = UDim2.new(0,0,0,0)}):Play()
-						TweenService:Create(LabelText,TweenInfo.new(1,Enum.EasingStyle.Quint),{TextTransparency = 1}):Play()
+						Label.Visible = false
 					end
 				end
 
@@ -3174,13 +3164,13 @@ function NEVERLOSE:AddWindow(NameScriptHub,Text,UICustomSize)
 				DownBar.Name = "DownBar"
 				DownBar.Parent = Dropdown
 				DownBar.Active = true
-				DownBar.AnchorPoint = Vector2.new(1, 0)
+				DownBar.AnchorPoint = Vector2.new(0, 0)
 				DownBar.BackgroundColor3 = NEVERLOSE.Themes.ButtonBlackgroundColor
 				DownBar.BackgroundTransparency = 0.100
 				DownBar.BorderColor3 = Color3.fromRGB(0, 0, 0)
 				DownBar.BorderSizePixel = 0
-				DownBar.Position = UDim2.new(0.948214233, 0, 0.873961239, 0)
-				DownBar.Size = UDim2.new(0.308999985, 0, 0, 0)
+				DownBar.Position = UDim2.new(0, 0, 0, 30)
+				DownBar.Size = UDim2.new(1, 0, 0, 0)
 				DownBar.Visible = false
 				DownBar.ZIndex = 10
 
@@ -3240,11 +3230,18 @@ function NEVERLOSE:AddWindow(NameScriptHub,Text,UICustomSize)
 					return a + 15
 				end
 
+				local function listHeight()
+					return math.max(22, #data * 22) + 8
+				end
+
 				local function auto_updatea()
+					local h = listHeight()
 					if DropdownToggle then
-						TweenService:Create(DownBar,TweenInfo.new(0.1),{Size=UDim2.new(0.4,0,0,get_list_v4())}):Play()
+						TweenService:Create(DownBar,TweenInfo.new(0.1),{Size=UDim2.new(1,0,0,h)}):Play()
+						TweenService:Create(Dropdown,TweenInfo.new(0.1),{Size=UDim2.new(0.899999976,0,0,28 + h)}):Play()
 					else
-						TweenService:Create(DownBar,TweenInfo.new(0.1),{Size=UDim2.new(0.4,0,0,0)}):Play()
+						TweenService:Create(DownBar,TweenInfo.new(0.1),{Size=UDim2.new(1,0,0,0)}):Play()
+						TweenService:Create(Dropdown,TweenInfo.new(0.1),{Size=UDim2.new(0.899999976,0,0,28)}):Play()
 					end
 				end
 
@@ -3254,8 +3251,6 @@ function NEVERLOSE:AddWindow(NameScriptHub,Text,UICustomSize)
 						TweenService:Create(Icon,TweenInfo.new(0.15),{Rotation=90}):Play()
 						TweenService:Create(LabelText,TweenInfo.new(0.4),{TextTransparency=0}):Play()
 
-						TweenService:Create(DownBar,TweenInfo.new(0.1),{Size=UDim2.new(0.4,0,0,get_list_size())}):Play()
-
 						auto_updatea()
 
 						for i,v:TextButton in ipairs(DownBar:GetChildren()) do
@@ -3263,7 +3258,7 @@ function NEVERLOSE:AddWindow(NameScriptHub,Text,UICustomSize)
 								v.Size=UDim2.new(0,0,0,0)
 								v.TextTransparency=1
 								TweenService:Create(v,TweenInfo.new(0.01+(i/100)),{
-									Size  = UDim2.new(0.99000001, 0, 0.5, 0),
+									Size  = UDim2.new(1, 0, 0, 22),
 									TextTransparency=0.3
 								}):Play()
 							end
@@ -3282,7 +3277,7 @@ function NEVERLOSE:AddWindow(NameScriptHub,Text,UICustomSize)
 						TweenService:Create(Icon,TweenInfo.new(0.15),{Rotation=-90}):Play()
 						TweenService:Create(LabelText,TweenInfo.new(0.4),{TextTransparency=0.3}):Play()
 
-						TweenService:Create(DownBar,TweenInfo.new(0.1),{Size=UDim2.new(0.4,0,0,0)}):Play()
+						auto_updatea()
 					end
 				end
 
@@ -3303,7 +3298,7 @@ function NEVERLOSE:AddWindow(NameScriptHub,Text,UICustomSize)
 					Dropdown.BackgroundTransparency = 1.000
 					Dropdown.BorderColor3 = Color3.fromRGB(0, 0, 0)
 					Dropdown.BorderSizePixel = 0
-					Dropdown.Size = UDim2.new(0.99000001, 0, 0.5, 0)
+					Dropdown.Size = UDim2.new(1, 0, 0, 22)
 					Dropdown.ZIndex = 1000
 					Dropdown.Font = Enum.Font.SourceSansSemibold
 					Dropdown.Text = "List"
