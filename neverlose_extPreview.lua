@@ -25,9 +25,15 @@
         warn("[Preview] AddWindow returned nil")
         return
     end
-    
+
+ if window.SetTag then
     window:SetTag("TEST", Color3.fromRGB(255, 90, 90))
-    
+ end
+
+  if window.SetInfo then
+    local _, ver = detectExecutor and detectExecutor() or "Unknown", nil
+  end
+
     local tagTexts = {"TEST", "ALPHA", "BETA", "PRO", "DEV"}
     local tagIndex = 1
     local tagColors = {
