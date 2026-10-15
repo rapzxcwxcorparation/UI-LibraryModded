@@ -1,9 +1,9 @@
 --[[
-	NEVERLOSE UI - PREVIEW / TEST SCRIPT
-	=====================================
-	Loads the library from GitHub, then builds every NVM tab & component
-	so you can see the whole thing in action.
-	Just execute this in your executor.
+	NEVERLOSE UI - PREVIEW / TEST SCRIPT (self-fix)
+	===============================================
+	Loads library from GitHub, builds every tab, then applies
+	mobile-friendly UI scale + compact notifications locally.
+	Execute as-is in your executor.
 ]]
 
 local URL = "https://raw.githubusercontent.com/rapzxcwxcorparation/UI-LibraryModded/refs/heads/main/neverlose_modded.luau"
@@ -18,6 +18,76 @@ local NEVERLOSE = chunk()
 assert(type(NEVERLOSE) == "table", "Library did not return a table")
 
 -- =====================================================================
+-- LOCAL UI FIXES (applied on top of whatever the lib gives us)
+-- =====================================================================
+
+local function applyScale(scaleGui, baseSize)
+	local cam = workspace.CurrentCamera
+	if not cam or not scaleGui then return end
+	local vp = cam.ViewportSize
+	local w = baseSize.X.Scale * vp.X + baseSize.X.Offset
+	local h = baseSize.Y.Scale * vp.Y + baseSize.Y.Offset
+	if w <= 0 or h <= 0 then return end
+	local us = scaleGui:FindFirstChildOfClass("UIScale")
+	if not us then
+		us = Instance.new("UIScale")
+		us.Parent = scaleGui
+	end
+	us.Scale = math.min(1, (vp.X * 0.78) / w, (vp.Y * 0.68) / h)
+end
+
+local function hookScale(scaleGui, baseSize)
+	task.spawn(function()
+		applyScale(scaleGui, baseSize)
+		local cam = workspace.CurrentCamera
+		if cam then
+			cam:GetPropertyChangedSignal("ViewportSize"):Connect(function()
+				applyScale(scaleGui, baseSize)
+			end)
+		end
+	end)
+end
+
+local function findNotifyGui()
+	local parent = (gethui and gethui()) or game:FindFirstChild("CoreGui") or game.Players.LocalPlayer.PlayerGui
+	for _, g in ipairs(parent:GetDescendants()) do
+		if g.Name == "NeverLoseModNotify" and g:IsA("ScreenGui") then
+			return g
+		end
+	end
+	return nil
+end
+
+local function compactNotify()
+	task.spawn(function()
+		for _ = 1, 60 do
+			local gui = findNotifyGui()
+			if gui then
+				local holder
+				for _, c in ipairs(gui:GetChildren()) do
+					if c:IsA("Frame") then holder = c; break end
+				end
+				if holder then
+					local function setW()
+						local cam = workspace.CurrentCamera
+						local vp = cam and cam.ViewportSize or Vector2.new(1280, 720)
+						local w = math.clamp(math.floor(vp.X * 0.52), 170, 240)
+						holder.Size = UDim2.new(0, w, 0, holder.Size.Y.Offset)
+					end
+					setW()
+					local cam = workspace.CurrentCamera
+					if cam then
+						cam:GetPropertyChangedSignal("ViewportSize"):Connect(setW)
+					end
+					return
+				end
+			end
+			task.wait(0.1)
+		end
+	end)
+end
+
+-- =====================================================================
 -- PREVIEW
 -- =====================================================================
 
@@ -29,7 +99,24 @@ local function pvNotify(title, text, kind)
 	NEVERLOSE:Notify(tostring(title), tostring(text), 3, kind or "info")
 end
 
-local Window = NEVERLOSE:AddWindow("NEVERLOSE PREVIEW", "component showcase", UDim2.new(0, 720, 0, 500))
+local BASE_SIZE = UDim2.new(0, 720, 0, 500)
+local Window = NEVERLOSE:AddWindow("NEVERLOSE PREVIEW", "component showcase", BASE_SIZE)
+
+task.spawn(function()
+	task.wait(0.3)
+	local parent = (gethui and gethui()) or game:FindFirstChild("CoreGui") or game.Players.LocalPlayer.PlayerGui
+	for _, g in ipairs(parent:GetDescendants()) do
+		if g:IsA("ScreenGui") and g ~= findNotifyGui() then
+			local hasFrame = false
+			for _, c in ipairs(g:GetChildren()) do
+				if c:IsA("Frame") and c.Active then hasFrame = true; break end
+			end
+			if hasFrame then hookScale(g, BASE_SIZE) end
+		end
+	end
+end)
+
+compactNotify()
 
 -- =====================================================================
 -- TAB 1 : CONTROLS
@@ -37,18 +124,16 @@ local Window = NEVERLOSE:AddWindow("NEVERLOSE PREVIEW", "component showcase", UD
 local TabControls = Window:AddTab("Controls", "home")
 do
 	local s = TabControls:AddSection("Basic Controls")
-	s:AddLabel("Preview window: every NVM component is showcased here.")
+	s:AddLabel("Preview: every NVM component is showcased here.")
 	s:AddToggle("Toggle Example", true, function(v)
 		pvNotify("Toggle", "Value: " .. tostring(v), "info")
 	end)
-	s:AddSlider("Slider Example", 0, 100, 50, function(v)
-		-- silent while dragging
-	end)
+	s:AddSlider("Slider Example", 0, 100, 50, function(v) end)
 	s:AddButton("Click Me", function()
 		NEVERLOSE:Notify("Button", "Button pressed!", 3, "success")
 	end)
 	s:AddSeparator()
-	s:AddLabel("Muted label. Can be hidden / shown via :Status().")
+	s:AddLabel("Muted label. Hidden/shown via :Status().")
 
 	local s2 = TabControls:AddSection("Notifications", "right")
 	local lbl = s2:AddLabel("Notifications fire from the buttons below.")
@@ -155,16 +240,15 @@ do
 end
 
 -- =====================================================================
--- TAB 6 : CONFIG (built-in from library)
+-- TAB 6 : CONFIG
 -- =====================================================================
-Window:AddConfigTab("Config")
+if Window.AddConfigTab then Window:AddConfigTab("Config") end
 
 -- =====================================================================
--- TAB 7 : THEMES (built-in from library)
+-- TAB 7 : THEMES
 -- =====================================================================
-Window:AddThemeTab("Themes")
+if Window.AddThemeTab then Window:AddThemeTab("Themes") end
 
--- Opening notification
 task.delay(0.8, function()
 	NEVERLOSE:Notify("Preview", "All tabs & components loaded. Browse around!", 5, "success")
 end)
