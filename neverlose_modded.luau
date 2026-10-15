@@ -2222,17 +2222,11 @@ function NEVERLOSE:AddWindow(NameScriptHub,Text,UICustomSize)
 				end
 			end
 
-			table.insert(NEVERLOSE.auto_function,update_section_size)
-
-			Section.Destroying:Connect(function()
-				local list = NEVERLOSE.auto_function
-				for i = #list, 1, -1 do
-					if list[i] == update_section_size then
-						table.remove(list, i)
-						break
-					end
-				end
+			UIListLayout:GetPropertyChangedSignal('AbsoluteContentSize'):Connect(function()
+				if Section.Visible and section_value then update_section_size() end
 			end)
+			Section.ChildAdded:Connect(function() task.defer(update_section_size) end)
+			Section.ChildRemoved:Connect(function() task.defer(update_section_size) end)
 
 			Section:GetPropertyChangedSignal('Size'):Connect(function()
 				if Section.Size.Y.Offset <= 1 then
@@ -2254,7 +2248,6 @@ function NEVERLOSE:AddWindow(NameScriptHub,Text,UICustomSize)
 				end
 
 				local Button = Instance.new("Frame")
-				local UIAspectRatioConstraint = Instance.new("UIAspectRatioConstraint")
 				local UICorner = Instance.new("UICorner")
 				local LabelText = Instance.new("TextLabel")
 				local UIStroke = Instance.new("UIStroke")
@@ -2265,13 +2258,8 @@ function NEVERLOSE:AddWindow(NameScriptHub,Text,UICustomSize)
 				Button.BackgroundTransparency = 0.550
 				Button.BorderColor3 = Color3.fromRGB(0, 0, 0)
 				Button.BorderSizePixel = 0
-				Button.Position = UDim2.new(0.0500000231, 0, 0.601014614, 0)
-				Button.Size = UDim2.new(0.899999976, 0, -0.351014495, 0)
+				Button.Size = UDim2.new(0.899999976, 0, 0, 28)
 				Button.ZIndex = 5
-
-				UIAspectRatioConstraint.Parent = Button
-				UIAspectRatioConstraint.AspectRatio = 7.000
-				UIAspectRatioConstraint.AspectType = Enum.AspectType.ScaleWithParentSize
 
 				UICorner.CornerRadius = UDim.new(0, 3)
 				UICorner.Parent = Button
@@ -2325,7 +2313,6 @@ function NEVERLOSE:AddWindow(NameScriptHub,Text,UICustomSize)
 
 			function sectionfunc:AddLabel(LabelNameString)
 				local Label = Instance.new("Frame")
-				local UIAspectRatioConstraint = Instance.new("UIAspectRatioConstraint")
 				local UICorner = Instance.new("UICorner")
 				local LabelText = Instance.new("TextLabel")
 
@@ -2335,12 +2322,8 @@ function NEVERLOSE:AddWindow(NameScriptHub,Text,UICustomSize)
 				Label.BackgroundTransparency = 1.000
 				Label.BorderColor3 = Color3.fromRGB(0, 0, 0)
 				Label.BorderSizePixel = 0
-				Label.Size = UDim2.new(0.899999976, 0, 0.5, 0)
+				Label.Size = UDim2.new(0.899999976, 0, 0, 22)
 				Label.ZIndex = 5
-
-				UIAspectRatioConstraint.Parent = Label
-				UIAspectRatioConstraint.AspectRatio = 6.000
-				UIAspectRatioConstraint.AspectType = Enum.AspectType.ScaleWithParentSize
 
 				UICorner.CornerRadius = UDim.new(0, 3)
 				UICorner.Parent = Label
@@ -2382,8 +2365,7 @@ function NEVERLOSE:AddWindow(NameScriptHub,Text,UICustomSize)
 
 				function button_func:Status(val)
 					if val then
-						TweenService:Create(Label,TweenInfo.new(1,Enum.EasingStyle.Quint),{Size = UDim2.new(0.899999976, 0, 0.5, 0)}):Play()
-						TweenService:Create(UIAspectRatioConstraint,TweenInfo.new(.1,Enum.EasingStyle.Quint),{AspectRatio = 6}):Play()
+						TweenService:Create(Label,TweenInfo.new(1,Enum.EasingStyle.Quint),{Size = UDim2.new(0.899999976, 0, 0, 22)}):Play()
 						TweenService:Create(LabelText,TweenInfo.new(0.7,Enum.EasingStyle.Quint),{TextTransparency = 0.3}):Play()
 					else
 						TweenService:Create(Label,TweenInfo.new(.8,Enum.EasingStyle.Quint),{Size = UDim2.new(0,0,0,0)}):Play()
@@ -2400,7 +2382,6 @@ function NEVERLOSE:AddWindow(NameScriptHub,Text,UICustomSize)
 				end
 
 				local Toggle = Instance.new("Frame")
-				local UIAspectRatioConstraint = Instance.new("UIAspectRatioConstraint")
 				local UICorner = Instance.new("UICorner")
 				local LabelText = Instance.new("TextLabel")
 				local Effect = Instance.new("Frame")
@@ -2414,13 +2395,8 @@ function NEVERLOSE:AddWindow(NameScriptHub,Text,UICustomSize)
 				Toggle.BackgroundTransparency = 1.000
 				Toggle.BorderColor3 = Color3.fromRGB(0, 0, 0)
 				Toggle.BorderSizePixel = 0
-				Toggle.Position = UDim2.new(0.0500000231, 0, 0.601014614, 0)
-				Toggle.Size = UDim2.new(0.899999976, 0, -0.351014495, 0)
+				Toggle.Size = UDim2.new(0.899999976, 0, 0, 28)
 				Toggle.ZIndex = 5
-
-				UIAspectRatioConstraint.Parent = Toggle
-				UIAspectRatioConstraint.AspectRatio = 7.000
-				UIAspectRatioConstraint.AspectType = Enum.AspectType.ScaleWithParentSize
 
 				UICorner.CornerRadius = UDim.new(0, 3)
 				UICorner.Parent = Toggle
@@ -2545,7 +2521,6 @@ function NEVERLOSE:AddWindow(NameScriptHub,Text,UICustomSize)
 				end
 
 				local Keybind = Instance.new("Frame")
-				local UIAspectRatioConstraint = Instance.new("UIAspectRatioConstraint")
 				local UICorner = Instance.new("UICorner")
 				local LabelText = Instance.new("TextLabel")
 				local BrindText = Instance.new("Frame")
@@ -2559,13 +2534,8 @@ function NEVERLOSE:AddWindow(NameScriptHub,Text,UICustomSize)
 				Keybind.BackgroundTransparency = 1.000
 				Keybind.BorderColor3 = Color3.fromRGB(0, 0, 0)
 				Keybind.BorderSizePixel = 0
-				Keybind.Position = UDim2.new(0.0500000231, 0, 0.601014614, 0)
-				Keybind.Size = UDim2.new(0.899999976, 0, -0.351014495, 0)
+				Keybind.Size = UDim2.new(0.899999976, 0, 0, 28)
 				Keybind.ZIndex = 5
-
-				UIAspectRatioConstraint.Parent = Keybind
-				UIAspectRatioConstraint.AspectRatio = 7.000
-				UIAspectRatioConstraint.AspectType = Enum.AspectType.ScaleWithParentSize
 
 				UICorner.CornerRadius = UDim.new(0, 3)
 				UICorner.Parent = Keybind
@@ -2714,7 +2684,6 @@ function NEVERLOSE:AddWindow(NameScriptHub,Text,UICustomSize)
 				end
 
 				local Slider = Instance.new("Frame")
-				local UIAspectRatioConstraint = Instance.new("UIAspectRatioConstraint")
 				local UICorner = Instance.new("UICorner")
 				local LabelText = Instance.new("TextLabel")
 				local Box = Instance.new("Frame")
@@ -2735,13 +2704,8 @@ function NEVERLOSE:AddWindow(NameScriptHub,Text,UICustomSize)
 				Slider.BackgroundTransparency = 1.000
 				Slider.BorderColor3 = Color3.fromRGB(0, 0, 0)
 				Slider.BorderSizePixel = 0
-				Slider.Position = UDim2.new(0.0500000231, 0, 0.601014614, 0)
-				Slider.Size = UDim2.new(0.899999976, 0, -0.351014495, 0)
+				Slider.Size = UDim2.new(0.899999976, 0, 0, 28)
 				Slider.ZIndex = 5
-
-				UIAspectRatioConstraint.Parent = Slider
-				UIAspectRatioConstraint.AspectRatio = 7.000
-				UIAspectRatioConstraint.AspectType = Enum.AspectType.ScaleWithParentSize
 
 				UICorner.CornerRadius = UDim.new(0, 3)
 				UICorner.Parent = Slider
@@ -2894,8 +2858,8 @@ function NEVERLOSE:AddWindow(NameScriptHub,Text,UICustomSize)
 					end
 				end)
 
-				Frame.InputEnded:Connect(function(Input)
-					if Input.UserInputType == Enum.UserInputType.MouseButton1 or Input.UserInputType == Enum.UserInputType.Touch then
+				InputService.InputEnded:Connect(function(Input)
+					if danger and (Input.UserInputType == Enum.UserInputType.MouseButton1 or Input.UserInputType == Enum.UserInputType.Touch) then
 						danger = false
 						TweenService:Create(LabelText,TweenInfo.new(0.1),{TextTransparency=0.3}):Play()
 					end
@@ -2945,7 +2909,6 @@ function NEVERLOSE:AddWindow(NameScriptHub,Text,UICustomSize)
 				end
 
 				local Dropdown = Instance.new("Frame")
-				local UIAspectRatioConstraint = Instance.new("UIAspectRatioConstraint")
 				local UICorner = Instance.new("UICorner")
 				local LabelText = Instance.new("TextLabel")
 				local TopBar = Instance.new("Frame")
@@ -2964,13 +2927,8 @@ function NEVERLOSE:AddWindow(NameScriptHub,Text,UICustomSize)
 				Dropdown.BackgroundTransparency = 1.000
 				Dropdown.BorderColor3 = Color3.fromRGB(0, 0, 0)
 				Dropdown.BorderSizePixel = 0
-				Dropdown.Position = UDim2.new(0.0500000231, 0, 0.601014614, 0)
-				Dropdown.Size = UDim2.new(0.899999976, 0, -0.351014495, 0)
+				Dropdown.Size = UDim2.new(0.899999976, 0, 0, 28)
 				Dropdown.ZIndex = 5
-
-				UIAspectRatioConstraint.Parent = Dropdown
-				UIAspectRatioConstraint.AspectRatio = 7.000
-				UIAspectRatioConstraint.AspectType = Enum.AspectType.ScaleWithParentSize
 
 				UICorner.CornerRadius = UDim.new(0, 3)
 				UICorner.Parent = Dropdown
@@ -3247,7 +3205,9 @@ function NEVERLOSE:AddWindow(NameScriptHub,Text,UICustomSize)
 					end
 				end
 
-				table.insert(NEVERLOSE.auto_function,auto_updatea)
+				UIListLayout:GetPropertyChangedSignal('AbsoluteContentSize'):Connect(function()
+					if DropdownToggle then auto_updatea() end
+				end)
 				refresh()
 
 				NVMRegister(NVMRegKey(TabNameString,SectionName,DropdownName), multi and "t" or "s",
@@ -3787,17 +3747,6 @@ function NEVERLOSE:Notify(title, text, duration, kind)
 	end)
 end
 
-task.spawn(function()
-	_G.index_neverlose=true
-	while _G.index_neverlose do task.wait(0)
-		pcall(function()
-			for i,v in ipairs(NEVERLOSE.auto_function) do task.wait()
-				pcall(function()
-					task.spawn(v)
-				end)
-			end
-		end)
-	end
-end)
+_G.index_neverlose=false
 
 return NEVERLOSE
