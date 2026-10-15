@@ -17,7 +17,7 @@ local CoreGui = game:FindFirstChild('CoreGui') or LocalPlayer.PlayerGui;
 local ProtectGui = protectgui or (syn and syn.protect_gui) or (function() end);
 
 local NEVERLOSE
-local ExtTheme = setmetatable({}, {
+local NVMTheme = setmetatable({}, {
 	__index = function(_, key)
 		local map = {
 			Background = "BlackgroundColor",
@@ -47,55 +47,55 @@ local ExtTheme = setmetatable({}, {
 
 local FAST = TweenInfo.new(0.16, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
 
-local function extFont(weight)
+local function NVMFont(weight)
 	weight = weight or Enum.FontWeight.Regular
 	if weight == Enum.FontWeight.Bold then return Enum.Font.SourceSansBold end
 	if weight == Enum.FontWeight.SemiBold or weight == Enum.FontWeight.Medium then return Enum.Font.SourceSansSemibold end
 	return Enum.Font.SourceSans
 end
 
-local function extNew(class, props, parent)
+local function NVMNew(class, props, parent)
 	local obj = Instance.new(class)
 	for k, v in pairs(props) do obj[k] = v end
 	obj.Parent = parent
 	return obj
 end
 
-local function extCorner(parent, scale, offset)
-	return extNew("UICorner", { CornerRadius = UDim.new(scale or 0, offset or 0) }, parent)
+local function NVMCorner(parent, scale, offset)
+	return NVMNew("UICorner", { CornerRadius = UDim.new(scale or 0, offset or 0) }, parent)
 end
 
-local function extStroke(parent, color, thickness)
-	return extNew("UIStroke", {
-		Color = color or ExtTheme.Stroke,
+local function NVMStroke(parent, color, thickness)
+	return NVMNew("UIStroke", {
+		Color = color or NVMTheme.Stroke,
 		Thickness = thickness or 1,
 		ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
 	}, parent)
 end
 
-local function extTween(obj, props, info)
+local function NVMTween(obj, props, info)
 	TweenService:Create(obj, info or FAST, props):Play()
 end
 
-local function extSafe(fn, ...)
+local function NVMSafe(fn, ...)
 	if not fn then return end
 	local ok, err = pcall(fn, ...)
 	if not ok then warn("[NeverLose-Mod] " .. tostring(err)) end
 end
 
-local function extIsPress(input)
+local function NVMIsPress(input)
 	return input.UserInputType == Enum.UserInputType.MouseButton1
 		or input.UserInputType == Enum.UserInputType.Touch
 end
 
-local function extIsMove(input)
+local function NVMIsMove(input)
 	return input.UserInputType == Enum.UserInputType.MouseMovement
 		or input.UserInputType == Enum.UserInputType.Touch
 end
 
-local ExtOrderCache = setmetatable({}, { __mode = "k" })
-local function extNextOrder(frame)
-	local order = ExtOrderCache[frame]
+local NVMOrderCache = setmetatable({}, { __mode = "k" })
+local function NVMNextOrder(frame)
+	local order = NVMOrderCache[frame]
 	if not order then
 		order = 0
 		for _, child in ipairs(frame:GetChildren()) do
@@ -105,26 +105,26 @@ local function extNextOrder(frame)
 		end
 	end
 	order += 1
-	ExtOrderCache[frame] = order
+	NVMOrderCache[frame] = order
 	return order
 end
 
-local function extCreateRow(section, height, auto)
-	local row = extNew("Frame", {
+local function NVMCreateRow(section, height, auto)
+	local row = NVMNew("Frame", {
 		Name = "ExtRow",
-		BackgroundColor3 = ExtTheme.Hover,
+		BackgroundColor3 = NVMTheme.Hover,
 		BackgroundTransparency = 1,
 		BorderSizePixel = 0,
 		ClipsDescendants = not auto,
 		Size = UDim2.new(0.9, 0, 0, height),
-		LayoutOrder = extNextOrder(section),
+		LayoutOrder = NVMNextOrder(section),
 	}, section)
 	if auto then row.AutomaticSize = Enum.AutomaticSize.Y end
-	extCorner(row, 0, 4)
+	NVMCorner(row, 0, 4)
 	return row
 end
 
-local function extBinder(row)
+local function NVMBinder(row)
 	local conns = {}
 	row.Destroying:Connect(function()
 		for _, c in ipairs(conns) do c:Disconnect() end
@@ -137,18 +137,18 @@ local function extBinder(row)
 	end
 end
 
-local function extHover(row, on)
-	on(row.MouseEnter, function() extTween(row, { BackgroundTransparency = 0.7 }) end)
-	on(row.MouseLeave, function() extTween(row, { BackgroundTransparency = 1 }) end)
+local function NVMHover(row, on)
+	on(row.MouseEnter, function() NVMTween(row, { BackgroundTransparency = 0.7 }) end)
+	on(row.MouseLeave, function() NVMTween(row, { BackgroundTransparency = 1 }) end)
 end
 
-local function extTitle(row, text, rightOffset)
-	return extNew("TextLabel", {
+local function NVMTitle(row, text, rightOffset)
+	return NVMNew("TextLabel", {
 		Name = "Title",
 		Text = text or "",
-		Font = extFont(Enum.FontWeight.Medium),
+		Font = NVMFont(Enum.FontWeight.Medium),
 		TextSize = 12,
-		TextColor3 = ExtTheme.Text,
+		TextColor3 = NVMTheme.Text,
 		TextXAlignment = Enum.TextXAlignment.Left,
 		TextTruncate = Enum.TextTruncate.AtEnd,
 		BackgroundTransparency = 1,
@@ -157,7 +157,7 @@ local function extTitle(row, text, rightOffset)
 	}, row)
 end
 
-local function extFinish(row, api)
+local function NVMFinish(row, api)
 	api.Container = row
 	api.SetVisible = function(_, v) row.Visible = v ~= false end
 	api.SetTitle = function(_, t)
@@ -173,7 +173,7 @@ local function extFinish(row, api)
 	return api
 end
 
-local function extResolveKey(value)
+local function NVMResolveKey(value)
 	if typeof(value) == "EnumItem" and value.EnumType == Enum.KeyCode then return value end
 	if type(value) == "string" then
 		local ok, r = pcall(function() return Enum.KeyCode[value] end)
@@ -182,41 +182,41 @@ local function extResolveKey(value)
 	return Enum.KeyCode.Unknown
 end
 
-local function extCreateToggle(section, name, default, callback)
-	local row = extCreateRow(section, 30)
-	local on = extBinder(row)
-	extTitle(row, name, 56)
+local function NVMCreateToggle(section, name, default, callback)
+	local row = NVMCreateRow(section, 30)
+	local on = NVMBinder(row)
+	NVMTitle(row, name, 56)
 	local state = default and true or false
 
-	local track = extNew("Frame", {
+	local track = NVMNew("Frame", {
 		AnchorPoint = Vector2.new(1, 0.5),
 		Position = UDim2.new(1, -10, 0, 15),
 		Size = UDim2.fromOffset(30, 16),
-		BackgroundColor3 = ExtTheme.Stroke,
+		BackgroundColor3 = NVMTheme.Stroke,
 		BorderSizePixel = 0,
 	}, row)
-	extCorner(track, 1, 0)
+	NVMCorner(track, 1, 0)
 
-	local knob = extNew("Frame", {
+	local knob = NVMNew("Frame", {
 		AnchorPoint = Vector2.new(0, 0.5),
 		Position = UDim2.new(0, 2, 0.5, 0),
 		Size = UDim2.fromOffset(12, 12),
-		BackgroundColor3 = ExtTheme.Muted,
+		BackgroundColor3 = NVMTheme.Muted,
 		BorderSizePixel = 0,
 	}, track)
-	extCorner(knob, 1, 0)
+	NVMCorner(knob, 1, 0)
 
-	local hit = extNew("TextButton", {
+	local hit = NVMNew("TextButton", {
 		Text = "", BackgroundTransparency = 1, Size = UDim2.fromScale(1, 1),
 	}, row)
 
 	local function render(animate)
 		local pos = state and UDim2.new(1, -14, 0.5, 0) or UDim2.new(0, 2, 0.5, 0)
-		local tc = state and ExtTheme.Accent or ExtTheme.Stroke
-		local kc = state and ExtTheme.Text or ExtTheme.Muted
+		local tc = state and NVMTheme.Accent or NVMTheme.Stroke
+		local kc = state and NVMTheme.Text or NVMTheme.Muted
 		if animate then
-			extTween(knob, { Position = pos, BackgroundColor3 = kc })
-			extTween(track, { BackgroundColor3 = tc })
+			NVMTween(knob, { Position = pos, BackgroundColor3 = kc })
+			NVMTween(track, { BackgroundColor3 = tc })
 		else
 			knob.Position = pos; knob.BackgroundColor3 = kc; track.BackgroundColor3 = tc
 		end
@@ -227,21 +227,21 @@ local function extCreateToggle(section, name, default, callback)
 		local changed = ns ~= state
 		state = ns
 		render(true)
-		if (changed or force) and callback then extSafe(callback, state) end
+		if (changed or force) and callback then NVMSafe(callback, state) end
 	end
 
 	on(hit.MouseButton1Click, function() set(not state, true) end)
-	extHover(row, on)
+	NVMHover(row, on)
 	render(false)
-	if callback then extSafe(callback, state) end
+	if callback then NVMSafe(callback, state) end
 
-	return extFinish(row, {
+	return NVMFinish(row, {
 		Set = function(_, v, f, force) set(v, f, force) end,
 		Get = function() return state end,
 	})
 end
 
-local function extCreateSlider(section, name, minVal, maxVal, default, decimals, callback, suffix)
+local function NVMCreateSlider(section, name, minVal, maxVal, default, decimals, callback, suffix)
 	if type(decimals) == "function" then callback = decimals; decimals = 0 end
 	minVal = tonumber(minVal) or 0
 	maxVal = tonumber(maxVal) or 100
@@ -252,47 +252,47 @@ local function extCreateSlider(section, name, minVal, maxVal, default, decimals,
 	local value = math.clamp(tonumber(default) or minVal, minVal, maxVal)
 	local dragging = false
 
-	local row = extCreateRow(section, 42)
-	local on = extBinder(row)
-	extTitle(row, name, 100)
+	local row = NVMCreateRow(section, 42)
+	local on = NVMBinder(row)
+	NVMTitle(row, name, 100)
 
-	local valueLabel = extNew("TextLabel", {
+	local valueLabel = NVMNew("TextLabel", {
 		AnchorPoint = Vector2.new(1, 0),
 		Position = UDim2.new(1, -10, 0, 0),
 		Size = UDim2.new(0, 90, 0, 30),
 		BackgroundTransparency = 1,
-		Font = extFont(Enum.FontWeight.Medium),
+		Font = NVMFont(Enum.FontWeight.Medium),
 		TextSize = 11,
-		TextColor3 = ExtTheme.Muted,
+		TextColor3 = NVMTheme.Muted,
 		TextXAlignment = Enum.TextXAlignment.Right,
 		Text = "",
 	}, row)
 
-	local track = extNew("Frame", {
+	local track = NVMNew("Frame", {
 		Position = UDim2.new(0, 10, 0, 31),
 		Size = UDim2.new(1, -20, 0, 4),
-		BackgroundColor3 = ExtTheme.Stroke,
+		BackgroundColor3 = NVMTheme.Stroke,
 		BorderSizePixel = 0,
 	}, row)
-	extCorner(track, 1, 0)
+	NVMCorner(track, 1, 0)
 
-	local fill = extNew("Frame", {
+	local fill = NVMNew("Frame", {
 		Size = UDim2.fromScale(0, 1),
-		BackgroundColor3 = ExtTheme.Accent,
+		BackgroundColor3 = NVMTheme.Accent,
 		BorderSizePixel = 0,
 	}, track)
-	extCorner(fill, 1, 0)
+	NVMCorner(fill, 1, 0)
 
-	local knob = extNew("Frame", {
+	local knob = NVMNew("Frame", {
 		AnchorPoint = Vector2.new(0.5, 0.5),
 		Position = UDim2.fromScale(0, 0.5),
 		Size = UDim2.fromOffset(10, 10),
-		BackgroundColor3 = ExtTheme.Text,
+		BackgroundColor3 = NVMTheme.Text,
 		BorderSizePixel = 0,
 	}, track)
-	extCorner(knob, 1, 0)
+	NVMCorner(knob, 1, 0)
 
-	local hit = extNew("TextButton", { Text = "", BackgroundTransparency = 1, Size = UDim2.fromScale(1, 1) }, row)
+	local hit = NVMNew("TextButton", { Text = "", BackgroundTransparency = 1, Size = UDim2.fromScale(1, 1) }, row)
 
 	local function fmt(n)
 		if decimals == 0 then return string.format("%d", math.round(n)) .. suffix end
@@ -311,7 +311,7 @@ local function extCreateSlider(section, name, minVal, maxVal, default, decimals,
 		local changed = r ~= value
 		value = r
 		render()
-		if fire and (changed or force) and callback then extSafe(callback, value) end
+		if fire and (changed or force) and callback then NVMSafe(callback, value) end
 	end
 
 	local function sample(x)
@@ -321,126 +321,126 @@ local function extCreateSlider(section, name, minVal, maxVal, default, decimals,
 		set(minVal + a * (maxVal - minVal), true)
 	end
 
-	on(hit.InputBegan, function(i) if extIsPress(i) then dragging = true; sample(i.Position.X) end end)
-	on(UserInputService.InputChanged, function(i) if dragging and extIsMove(i) then sample(i.Position.X) end end)
-	on(UserInputService.InputEnded, function(i) if extIsPress(i) then dragging = false end end)
-	extHover(row, on)
+	on(hit.InputBegan, function(i) if NVMIsPress(i) then dragging = true; sample(i.Position.X) end end)
+	on(UserInputService.InputChanged, function(i) if dragging and NVMIsMove(i) then sample(i.Position.X) end end)
+	on(UserInputService.InputEnded, function(i) if NVMIsPress(i) then dragging = false end end)
+	NVMHover(row, on)
 	render()
 
-	return extFinish(row, {
+	return NVMFinish(row, {
 		Set = function(_, v, f, force) set(v, f, force) end,
 		Get = function() return value end,
 	})
 end
 
-local function extCreateButton(section, name, callback)
-	local row = extCreateRow(section, 30)
-	local on = extBinder(row)
+local function NVMCreateButton(section, name, callback)
+	local row = NVMCreateRow(section, 30)
+	local on = NVMBinder(row)
 
-	local button = extNew("TextButton", {
+	local button = NVMNew("TextButton", {
 		Text = name or "Button",
 		AutoButtonColor = false,
-		BackgroundColor3 = ExtTheme.Surface,
+		BackgroundColor3 = NVMTheme.Surface,
 		BorderSizePixel = 0,
 		Size = UDim2.fromScale(1, 1),
-		Font = extFont(Enum.FontWeight.Medium),
+		Font = NVMFont(Enum.FontWeight.Medium),
 		TextSize = 12,
-		TextColor3 = ExtTheme.Text,
+		TextColor3 = NVMTheme.Text,
 	}, row)
-	extCorner(button, 0, 4)
-	extStroke(button)
+	NVMCorner(button, 0, 4)
+	NVMStroke(button)
 
-	on(button.MouseEnter, function() extTween(button, { BackgroundColor3 = ExtTheme.Hover }) end)
-	on(button.MouseLeave, function() extTween(button, { BackgroundColor3 = ExtTheme.Surface }) end)
+	on(button.MouseEnter, function() NVMTween(button, { BackgroundColor3 = NVMTheme.Hover }) end)
+	on(button.MouseLeave, function() NVMTween(button, { BackgroundColor3 = NVMTheme.Surface }) end)
 	on(button.MouseButton1Click, function()
-		button.BackgroundColor3 = ExtTheme.Accent
-		extTween(button, { BackgroundColor3 = ExtTheme.Hover })
-		if callback then extSafe(callback) end
+		button.BackgroundColor3 = NVMTheme.Accent
+		NVMTween(button, { BackgroundColor3 = NVMTheme.Hover })
+		if callback then NVMSafe(callback) end
 	end)
 
-	return extFinish(row, {
+	return NVMFinish(row, {
 		SetText = function(_, t) button.Text = tostring(t) end,
-		Fire = function(_, ...) if callback then extSafe(callback, ...) end end,
+		Fire = function(_, ...) if callback then NVMSafe(callback, ...) end end,
 	})
 end
 
-local function extCreateLabel(section, text)
-	local row = extCreateRow(section, 0, true)
+local function NVMCreateLabel(section, text)
+	local row = NVMCreateRow(section, 0, true)
 
-	local label = extNew("TextLabel", {
+	local label = NVMNew("TextLabel", {
 		Name = "Title",
 		BackgroundTransparency = 1,
 		AutomaticSize = Enum.AutomaticSize.Y,
 		Size = UDim2.new(1, 0, 0, 0),
-		Font = extFont(),
+		Font = NVMFont(),
 		TextSize = 11,
-		TextColor3 = ExtTheme.Muted,
+		TextColor3 = NVMTheme.Muted,
 		TextWrapped = true,
 		TextXAlignment = Enum.TextXAlignment.Left,
 		TextYAlignment = Enum.TextYAlignment.Top,
 		Text = tostring(text or ""),
 	}, row)
-	extNew("UIPadding", {
+	NVMNew("UIPadding", {
 		PaddingTop = UDim.new(0, 5),
 		PaddingBottom = UDim.new(0, 5),
 		PaddingLeft = UDim.new(0, 10),
 		PaddingRight = UDim.new(0, 10),
 	}, label)
 
-	return extFinish(row, {
+	return NVMFinish(row, {
 		SetText = function(_, v) label.Text = tostring(v) end,
 		Get = function() return label.Text end,
 	})
 end
 
-local function extCreateSeparator(section)
-	local row = extCreateRow(section, 9)
-	extNew("Frame", {
+local function NVMCreateSeparator(section)
+	local row = NVMCreateRow(section, 9)
+	NVMNew("Frame", {
 		AnchorPoint = Vector2.new(0, 0.5),
 		Position = UDim2.new(0, 10, 0.5, 0),
 		Size = UDim2.new(1, -20, 0, 1),
-		BackgroundColor3 = ExtTheme.Stroke,
+		BackgroundColor3 = NVMTheme.Stroke,
 		BorderSizePixel = 0,
 	}, row)
-	return extFinish(row, {})
+	return NVMFinish(row, {})
 end
 
-local function extCreateProgressBar(section, name, minVal, maxVal, default)
+local function NVMCreateProgressBar(section, name, minVal, maxVal, default)
 	minVal = tonumber(minVal) or 0
 	maxVal = tonumber(maxVal) or 100
 	if maxVal <= minVal then maxVal = minVal + 1 end
 	local value = math.clamp(tonumber(default) or minVal, minVal, maxVal)
 
-	local row = extCreateRow(section, 42)
-	local on = extBinder(row)
-	extTitle(row, name, 100)
+	local row = NVMCreateRow(section, 42)
+	local on = NVMBinder(row)
+	NVMTitle(row, name, 100)
 
-	local valueLabel = extNew("TextLabel", {
+	local valueLabel = NVMNew("TextLabel", {
 		AnchorPoint = Vector2.new(1, 0),
 		Position = UDim2.new(1, -10, 0, 0),
 		Size = UDim2.new(0, 90, 0, 30),
 		BackgroundTransparency = 1,
-		Font = extFont(Enum.FontWeight.Medium),
+		Font = NVMFont(Enum.FontWeight.Medium),
 		TextSize = 11,
-		TextColor3 = ExtTheme.Muted,
+		TextColor3 = NVMTheme.Muted,
 		TextXAlignment = Enum.TextXAlignment.Right,
 		Text = "",
 	}, row)
 
-	local track = extNew("Frame", {
+	local track = NVMNew("Frame", {
 		Position = UDim2.new(0, 10, 0, 31),
 		Size = UDim2.new(1, -20, 0, 4),
-		BackgroundColor3 = ExtTheme.Stroke,
+		BackgroundColor3 = NVMTheme.Stroke,
 		BorderSizePixel = 0,
 	}, row)
-	extCorner(track, 1, 0)
+	NVMCorner(track, 1, 0)
 
-	local fill = extNew("Frame", {
+	local fill = NVMNew("Frame", {
 		Size = UDim2.fromScale(0, 1),
-		BackgroundColor3 = ExtTheme.Accent,
+		BackgroundColor3 = NVMTheme.Accent,
 		BorderSizePixel = 0,
 	}, track)
-	extCorner(fill, 1, 0)
+	NVMCorner(fill, 1, 0)
 
 	local function render()
 		local a = (value - minVal) / (maxVal - minVal)
@@ -448,86 +448,86 @@ local function extCreateProgressBar(section, name, minVal, maxVal, default)
 		valueLabel.Text = string.format("%d", math.round(value))
 	end
 
-	extHover(row, on)
+	NVMHover(row, on)
 	render()
 
-	return extFinish(row, {
+	return NVMFinish(row, {
 		Set = function(_, nv) value = math.clamp(tonumber(nv) or value, minVal, maxVal); render() end,
 		Get = function() return value end,
 	})
 end
 
-local function extCreateTextBox(section, name, placeholder, default, callback)
-	local row = extCreateRow(section, 30)
-	local on = extBinder(row)
+local function NVMCreateTextBox(section, name, placeholder, default, callback)
+	local row = NVMCreateRow(section, 30)
+	local on = NVMBinder(row)
 
-	local title = extTitle(row, name)
+	local title = NVMTitle(row, name)
 	title.Size = UDim2.new(0.45, -10, 0, 30)
 
-	local input = extNew("TextBox", {
+	local input = NVMNew("TextBox", {
 		AnchorPoint = Vector2.new(1, 0.5),
 		Position = UDim2.new(1, -10, 0, 15),
 		Size = UDim2.new(0.55, -10, 0, 20),
-		BackgroundColor3 = ExtTheme.Surface,
+		BackgroundColor3 = NVMTheme.Surface,
 		BorderSizePixel = 0,
 		ClearTextOnFocus = false,
 		ClipsDescendants = true,
-		Font = extFont(),
+		Font = NVMFont(),
 		TextSize = 11,
-		TextColor3 = ExtTheme.Text,
-		PlaceholderColor3 = ExtTheme.Muted,
+		TextColor3 = NVMTheme.Text,
+		PlaceholderColor3 = NVMTheme.Muted,
 		PlaceholderText = placeholder or "Type here...",
 		TextXAlignment = Enum.TextXAlignment.Left,
 		TextTruncate = Enum.TextTruncate.AtEnd,
 		Text = tostring(default or ""),
 	}, row)
-	extCorner(input, 0, 4)
-	extNew("UIPadding", { PaddingLeft = UDim.new(0, 6), PaddingRight = UDim.new(0, 6) }, input)
-	local border = extStroke(input)
+	NVMCorner(input, 0, 4)
+	NVMNew("UIPadding", { PaddingLeft = UDim.new(0, 6), PaddingRight = UDim.new(0, 6) }, input)
+	local border = NVMStroke(input)
 
-	on(input.Focused, function() extTween(border, { Color = ExtTheme.Accent }) end)
+	on(input.Focused, function() NVMTween(border, { Color = NVMTheme.Accent }) end)
 	on(input.FocusLost, function(enter)
-		extTween(border, { Color = ExtTheme.Stroke })
-		if callback then extSafe(callback, input.Text, enter) end
+		NVMTween(border, { Color = NVMTheme.Stroke })
+		if callback then NVMSafe(callback, input.Text, enter) end
 	end)
 
-	extHover(row, on)
+	NVMHover(row, on)
 
-	return extFinish(row, {
+	return NVMFinish(row, {
 		Set = function(_, v) input.Text = tostring(v or "") end,
 		Get = function() return input.Text end,
 	})
 end
 
-local function extCreateInput(section, name, default, minVal, maxVal, decimals, callback)
+local function NVMCreateInput(section, name, default, minVal, maxVal, decimals, callback)
 	minVal = tonumber(minVal)
 	maxVal = tonumber(maxVal)
 	decimals = math.max(0, math.floor(tonumber(decimals) or 0))
 
-	local row = extCreateRow(section, 30)
-	local on = extBinder(row)
-	local title = extTitle(row, name)
+	local row = NVMCreateRow(section, 30)
+	local on = NVMBinder(row)
+	local title = NVMTitle(row, name)
 	title.Size = UDim2.new(0.45, -10, 0, 30)
 
-	local input = extNew("TextBox", {
+	local input = NVMNew("TextBox", {
 		AnchorPoint = Vector2.new(1, 0.5),
 		Position = UDim2.new(1, -10, 0, 15),
 		Size = UDim2.new(0.55, -10, 0, 20),
-		BackgroundColor3 = ExtTheme.Surface,
+		BackgroundColor3 = NVMTheme.Surface,
 		BorderSizePixel = 0,
 		ClearTextOnFocus = false,
 		ClipsDescendants = true,
-		Font = extFont(),
+		Font = NVMFont(),
 		TextSize = 11,
-		TextColor3 = ExtTheme.Text,
-		PlaceholderColor3 = ExtTheme.Muted,
+		TextColor3 = NVMTheme.Text,
+		PlaceholderColor3 = NVMTheme.Muted,
 		PlaceholderText = "0",
 		TextXAlignment = Enum.TextXAlignment.Right,
 		Text = tostring(default or 0),
 	}, row)
-	extCorner(input, 0, 4)
-	extNew("UIPadding", { PaddingRight = UDim.new(0, 6) }, input)
-	local border = extStroke(input)
+	NVMCorner(input, 0, 4)
+	NVMNew("UIPadding", { PaddingRight = UDim.new(0, 6) }, input)
+	local border = NVMStroke(input)
 
 	local function clamp(v)
 		v = tonumber(v) or minVal or 0
@@ -542,76 +542,76 @@ local function extCreateInput(section, name, default, minVal, maxVal, decimals, 
 		return v
 	end
 
-	on(input.Focused, function() extTween(border, { Color = ExtTheme.Accent }) end)
+	on(input.Focused, function() NVMTween(border, { Color = NVMTheme.Accent }) end)
 	on(input.FocusLost, function(enter)
-		extTween(border, { Color = ExtTheme.Stroke })
+		NVMTween(border, { Color = NVMTheme.Stroke })
 		local v = clamp(input.Text)
 		input.Text = tostring(v)
-		if callback then extSafe(callback, v, enter) end
+		if callback then NVMSafe(callback, v, enter) end
 	end)
 
-	extHover(row, on)
+	NVMHover(row, on)
 
-	return extFinish(row, {
+	return NVMFinish(row, {
 		Set = function(_, v) input.Text = tostring(clamp(v)) end,
 		Get = function() return clamp(input.Text) end,
 	})
 end
 
-local function extCreateToggleKeybind(section, name, defaultToggle, defaultKey, toggleCb, keyCb, changedCb)
-	local row = extCreateRow(section, 30)
-	local on = extBinder(row)
-	extTitle(row, name, 180)
+local function NVMCreateToggleKeybind(section, name, defaultToggle, defaultKey, toggleCb, keyCb, changedCb)
+	local row = NVMCreateRow(section, 30)
+	local on = NVMBinder(row)
+	NVMTitle(row, name, 180)
 
 	local state = defaultToggle and true or false
-	local key = extResolveKey(defaultKey)
+	local key = NVMResolveKey(defaultKey)
 	local listening = false
 
-	local track = extNew("Frame", {
+	local track = NVMNew("Frame", {
 		AnchorPoint = Vector2.new(1, 0.5),
 		Position = UDim2.new(1, -10, 0, 15),
 		Size = UDim2.fromOffset(30, 16),
-		BackgroundColor3 = ExtTheme.Stroke,
+		BackgroundColor3 = NVMTheme.Stroke,
 		BorderSizePixel = 0,
 	}, row)
-	extCorner(track, 1, 0)
+	NVMCorner(track, 1, 0)
 
-	local knob = extNew("Frame", {
+	local knob = NVMNew("Frame", {
 		AnchorPoint = Vector2.new(0, 0.5),
 		Position = UDim2.new(0, 2, 0.5, 0),
 		Size = UDim2.fromOffset(12, 12),
-		BackgroundColor3 = ExtTheme.Muted,
+		BackgroundColor3 = NVMTheme.Muted,
 		BorderSizePixel = 0,
 	}, track)
-	extCorner(knob, 1, 0)
+	NVMCorner(knob, 1, 0)
 
-	local keyBtn = extNew("TextButton", {
+	local keyBtn = NVMNew("TextButton", {
 		AnchorPoint = Vector2.new(1, 0.5),
 		Position = UDim2.new(1, -48, 0, 15),
 		Size = UDim2.fromOffset(72, 20),
-		BackgroundColor3 = ExtTheme.Surface,
+		BackgroundColor3 = NVMTheme.Surface,
 		BorderSizePixel = 0,
 		AutoButtonColor = false,
-		Font = extFont(Enum.FontWeight.Medium),
+		Font = NVMFont(Enum.FontWeight.Medium),
 		TextSize = 11,
-		TextColor3 = ExtTheme.Text,
+		TextColor3 = NVMTheme.Text,
 		Text = "",
 	}, row)
-	extCorner(keyBtn, 0, 4)
-	extStroke(keyBtn)
+	NVMCorner(keyBtn, 0, 4)
+	NVMStroke(keyBtn)
 
-	local hit = extNew("TextButton", {
+	local hit = NVMNew("TextButton", {
 		Text = "", BackgroundTransparency = 1,
 		Size = UDim2.new(1, -130, 1, 0), Position = UDim2.new(0, 0, 0, 0),
 	}, row)
 
 	local function renderToggle(animate)
 		local p = state and UDim2.new(1, -14, 0.5, 0) or UDim2.new(0, 2, 0.5, 0)
-		local tc = state and ExtTheme.Accent or ExtTheme.Stroke
-		local kc = state and ExtTheme.Text or ExtTheme.Muted
+		local tc = state and NVMTheme.Accent or NVMTheme.Stroke
+		local kc = state and NVMTheme.Text or NVMTheme.Muted
 		if animate then
-			extTween(knob, { Position = p, BackgroundColor3 = kc })
-			extTween(track, { BackgroundColor3 = tc })
+			NVMTween(knob, { Position = p, BackgroundColor3 = kc })
+			NVMTween(track, { BackgroundColor3 = tc })
 		else
 			knob.Position = p; knob.BackgroundColor3 = kc; track.BackgroundColor3 = tc
 		end
@@ -619,10 +619,10 @@ local function extCreateToggleKeybind(section, name, defaultToggle, defaultKey, 
 
 	local function renderKey()
 		if listening then
-			keyBtn.Text = "..."; keyBtn.TextColor3 = ExtTheme.Accent
+			keyBtn.Text = "..."; keyBtn.TextColor3 = NVMTheme.Accent
 		else
 			keyBtn.Text = key == Enum.KeyCode.Unknown and "None" or key.Name
-			keyBtn.TextColor3 = ExtTheme.Text
+			keyBtn.TextColor3 = NVMTheme.Text
 		end
 	end
 
@@ -631,7 +631,7 @@ local function extCreateToggleKeybind(section, name, defaultToggle, defaultKey, 
 		local changed = ns ~= state
 		state = ns
 		renderToggle(true)
-		if (changed or force) and toggleCb then extSafe(toggleCb, state) end
+		if (changed or force) and toggleCb then NVMSafe(toggleCb, state) end
 	end
 
 	on(hit.MouseButton1Click, function() setToggle(not state, true) end)
@@ -642,32 +642,32 @@ local function extCreateToggleKeybind(section, name, defaultToggle, defaultKey, 
 			listening = false
 			if i.KeyCode ~= Enum.KeyCode.Escape then
 				key = i.KeyCode == Enum.KeyCode.Backspace and Enum.KeyCode.Unknown or i.KeyCode
-				if changedCb then extSafe(changedCb, key) end
+				if changedCb then NVMSafe(changedCb, key) end
 			end
 			renderKey()
 			return
 		end
 		if processed or key == Enum.KeyCode.Unknown then return end
-		if i.KeyCode == key and keyCb then extSafe(keyCb, key) end
+		if i.KeyCode == key and keyCb then NVMSafe(keyCb, key) end
 	end)
 
-	extHover(row, on)
+	NVMHover(row, on)
 	renderToggle(false); renderKey()
-	if toggleCb then extSafe(toggleCb, state) end
+	if toggleCb then NVMSafe(toggleCb, state) end
 
-	return extFinish(row, {
+	return NVMFinish(row, {
 		Set = function(_, v, f, force) setToggle(v, f, force) end,
 		Get = function() return state end,
 		GetKey = function() return key end,
 		SetKey = function(_, v, f)
-			key = extResolveKey(v); renderKey()
-			if f and changedCb then extSafe(changedCb, key) end
+			key = NVMResolveKey(v); renderKey()
+			if f and changedCb then NVMSafe(changedCb, key) end
 		end,
 		IsPressed = function() return key ~= Enum.KeyCode.Unknown and UserInputService:IsKeyDown(key) end,
 	})
 end
 
-local function extCreateDropdown(section, name, options, default, callback, multi)
+local function NVMCreateDropdown(section, name, options, default, callback, multi)
 	local HEADER, ITEM, MAXV = 30, 22, 6
 	options = type(options) == "table" and options or {}
 	multi = multi and true or false
@@ -683,35 +683,35 @@ local function extCreateDropdown(section, name, options, default, callback, mult
 	end
 	resetSel(default)
 
-	local row = extCreateRow(section, HEADER)
-	local on = extBinder(row)
-	extTitle(row, name, 170)
+	local row = NVMCreateRow(section, HEADER)
+	local on = NVMBinder(row)
+	NVMTitle(row, name, 170)
 
-	local valueLabel = extNew("TextLabel", {
+	local valueLabel = NVMNew("TextLabel", {
 		AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -26, 0, 0),
 		Size = UDim2.new(0, 140, 0, HEADER), BackgroundTransparency = 1,
-		Font = extFont(), TextSize = 11, TextColor3 = ExtTheme.Muted,
+		Font = NVMFont(), TextSize = 11, TextColor3 = NVMTheme.Muted,
 		TextXAlignment = Enum.TextXAlignment.Right, TextTruncate = Enum.TextTruncate.AtEnd, Text = "",
 	}, row)
 
-	local arrow = extNew("TextLabel", {
+	local arrow = NVMNew("TextLabel", {
 		AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -10, 0, 0),
 		Size = UDim2.fromOffset(14, HEADER), BackgroundTransparency = 1,
-		Font = extFont(Enum.FontWeight.Bold), TextSize = 11, TextColor3 = ExtTheme.Muted, Text = "v",
+		Font = NVMFont(Enum.FontWeight.Bold), TextSize = 11, TextColor3 = NVMTheme.Muted, Text = "v",
 	}, row)
 
-	local list = extNew("ScrollingFrame", {
+	local list = NVMNew("ScrollingFrame", {
 		Position = UDim2.new(0, 8, 0, HEADER + 2),
 		Size = UDim2.new(1, -16, 0, 0),
-		BackgroundColor3 = ExtTheme.Surface, BorderSizePixel = 0,
-		ScrollBarThickness = 2, ScrollBarImageColor3 = ExtTheme.Muted,
+		BackgroundColor3 = NVMTheme.Surface, BorderSizePixel = 0,
+		ScrollBarThickness = 2, ScrollBarImageColor3 = NVMTheme.Muted,
 		CanvasSize = UDim2.new(), AutomaticCanvasSize = Enum.AutomaticSize.Y,
 		ScrollingDirection = Enum.ScrollingDirection.Y,
 	}, row)
-	extCorner(list, 0, 4)
-	extNew("UIListLayout", { SortOrder = Enum.SortOrder.LayoutOrder }, list)
+	NVMCorner(list, 0, 4)
+	NVMNew("UIListLayout", { SortOrder = Enum.SortOrder.LayoutOrder }, list)
 
-	local hit = extNew("TextButton", {
+	local hit = NVMNew("TextButton", {
 		Text = "", BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, HEADER),
 	}, row)
 
@@ -737,7 +737,7 @@ local function extCreateDropdown(section, name, options, default, callback, mult
 		valueLabel.Text = summary()
 		for _, item in ipairs(items) do
 			local a = multi and (selected[item.option] == true) or (selected == item.option)
-			item.button.TextColor3 = a and ExtTheme.Accent or ExtTheme.Muted
+			item.button.TextColor3 = a and NVMTheme.Accent or NVMTheme.Muted
 		end
 	end
 
@@ -747,83 +747,83 @@ local function extCreateDropdown(section, name, options, default, callback, mult
 		if v == expanded then return end
 		expanded = v
 		local h = listH()
-		extTween(row, { Size = UDim2.new(0.9, 0, 0, v and (HEADER + h + 8) or HEADER) })
-		extTween(list, { Size = UDim2.new(1, -16, 0, v and h or 0) })
-		extTween(arrow, { Rotation = v and 180 or 0 })
+		NVMTween(row, { Size = UDim2.new(0.9, 0, 0, v and (HEADER + h + 8) or HEADER) })
+		NVMTween(list, { Size = UDim2.new(1, -16, 0, v and h or 0) })
+		NVMTween(arrow, { Rotation = v and 180 or 0 })
 	end
 
 	local function choose(o)
 		if multi then selected[o] = (not selected[o]) or nil
 		else selected = o; setExpanded(false) end
 		refresh()
-		if callback then extSafe(callback, snapshot()) end
+		if callback then NVMSafe(callback, snapshot()) end
 	end
 
 	local function build()
 		for _, c in ipairs(list:GetChildren()) do if c:IsA("TextButton") then c:Destroy() end end
 		table.clear(items)
 		for i, o in ipairs(options) do
-			local b = extNew("TextButton", {
-				Text = tostring(o), Font = extFont(), TextSize = 11, TextColor3 = ExtTheme.Muted,
+			local b = NVMNew("TextButton", {
+				Text = tostring(o), Font = NVMFont(), TextSize = 11, TextColor3 = NVMTheme.Muted,
 				TextXAlignment = Enum.TextXAlignment.Left, AutoButtonColor = false,
-				BackgroundColor3 = ExtTheme.Hover, BackgroundTransparency = 1, BorderSizePixel = 0,
+				BackgroundColor3 = NVMTheme.Hover, BackgroundTransparency = 1, BorderSizePixel = 0,
 				Size = UDim2.new(1, 0, 0, ITEM), LayoutOrder = i,
 			}, list)
-			extCorner(b, 0, 3)
-			extNew("UIPadding", { PaddingLeft = UDim.new(0, 8) }, b)
+			NVMCorner(b, 0, 3)
+			NVMNew("UIPadding", { PaddingLeft = UDim.new(0, 8) }, b)
 			on(b.MouseButton1Click, function() choose(o) end)
-			on(b.MouseEnter, function() extTween(b, { BackgroundTransparency = 0 }) end)
-			on(b.MouseLeave, function() extTween(b, { BackgroundTransparency = 1 }) end)
+			on(b.MouseEnter, function() NVMTween(b, { BackgroundTransparency = 0 }) end)
+			on(b.MouseLeave, function() NVMTween(b, { BackgroundTransparency = 1 }) end)
 			items[i] = { option = o, button = b }
 		end
 		refresh()
 	end
 
 	on(hit.MouseButton1Click, function() setExpanded(not expanded) end)
-	extHover(row, on)
+	NVMHover(row, on)
 	build()
 
-	return extFinish(row, {
-		Set = function(_, v, f) resetSel(v); refresh(); if f and callback then extSafe(callback, snapshot()) end end,
+	return NVMFinish(row, {
+		Set = function(_, v, f) resetSel(v); refresh(); if f and callback then NVMSafe(callback, snapshot()) end end,
 		Get = snapshot,
 		SetOptions = function(_, no, nd, f)
 			setExpanded(false)
 			options = type(no) == "table" and no or {}
 			resetSel(nd); build()
-			if f and callback then extSafe(callback, snapshot()) end
+			if f and callback then NVMSafe(callback, snapshot()) end
 		end,
 		Refresh = function(_, no, f)
 			setExpanded(false)
 			options = type(no) == "table" and no or options
 			build()
-			if f and callback then extSafe(callback, snapshot()) end
+			if f and callback then NVMSafe(callback, snapshot()) end
 		end,
 	})
 end
 
-local function extCreateKeybind(section, name, default, callback, changed)
-	local row = extCreateRow(section, 30)
-	local on = extBinder(row)
-	extTitle(row, name, 94)
+local function NVMCreateKeybind(section, name, default, callback, changed)
+	local row = NVMCreateRow(section, 30)
+	local on = NVMBinder(row)
+	NVMTitle(row, name, 94)
 
-	local key = extResolveKey(default)
+	local key = NVMResolveKey(default)
 	local listening = false
 
-	local button = extNew("TextButton", {
+	local button = NVMNew("TextButton", {
 		AnchorPoint = Vector2.new(1, 0.5), Position = UDim2.new(1, -10, 0, 15),
-		Size = UDim2.fromOffset(72, 20), BackgroundColor3 = ExtTheme.Surface,
-		BorderSizePixel = 0, AutoButtonColor = false, Font = extFont(Enum.FontWeight.Medium),
-		TextSize = 11, TextColor3 = ExtTheme.Text, Text = "",
+		Size = UDim2.fromOffset(72, 20), BackgroundColor3 = NVMTheme.Surface,
+		BorderSizePixel = 0, AutoButtonColor = false, Font = NVMFont(Enum.FontWeight.Medium),
+		TextSize = 11, TextColor3 = NVMTheme.Text, Text = "",
 	}, row)
-	extCorner(button, 0, 4)
-	extStroke(button)
+	NVMCorner(button, 0, 4)
+	NVMStroke(button)
 
 	local function render()
 		if listening then
-			button.Text = "..."; button.TextColor3 = ExtTheme.Accent
+			button.Text = "..."; button.TextColor3 = NVMTheme.Accent
 		else
 			button.Text = key == Enum.KeyCode.Unknown and "None" or key.Name
-			button.TextColor3 = ExtTheme.Text
+			button.TextColor3 = NVMTheme.Text
 		end
 	end
 
@@ -834,28 +834,28 @@ local function extCreateKeybind(section, name, default, callback, changed)
 			listening = false
 			if i.KeyCode ~= Enum.KeyCode.Escape then
 				key = i.KeyCode == Enum.KeyCode.Backspace and Enum.KeyCode.Unknown or i.KeyCode
-				if changed then extSafe(changed, key) end
+				if changed then NVMSafe(changed, key) end
 			end
 			render()
 			return
 		end
 		if processed or key == Enum.KeyCode.Unknown then return end
-		if i.KeyCode == key and callback then extSafe(callback, key) end
+		if i.KeyCode == key and callback then NVMSafe(callback, key) end
 	end)
 
-	extHover(row, on); render()
+	NVMHover(row, on); render()
 
-	return extFinish(row, {
+	return NVMFinish(row, {
 		Set = function(_, v, f)
-			key = extResolveKey(v); render()
-			if f and changed then extSafe(changed, key) end
+			key = NVMResolveKey(v); render()
+			if f and changed then NVMSafe(changed, key) end
 		end,
 		Get = function() return key end,
 		IsPressed = function() return key ~= Enum.KeyCode.Unknown and UserInputService:IsKeyDown(key) end,
 	})
 end
 
-local function extCreateColorPicker(section, name, default, callback)
+local function NVMCreateColorPicker(section, name, default, callback)
 	local HEADER, SV_H, HUE_H = 30, 80, 10
 	local HOLDER_H = SV_H + 10 + HUE_H
 	local EXPANDED = HEADER + 4 + HOLDER_H + 8
@@ -865,14 +865,14 @@ local function extCreateColorPicker(section, name, default, callback)
 	local expanded = false
 	local mode = nil
 
-	local row = extCreateRow(section, HEADER)
-	local on = extBinder(row)
-	extTitle(row, name, 110)
+	local row = NVMCreateRow(section, HEADER)
+	local on = NVMBinder(row)
+	NVMTitle(row, name, 110)
 
-	local hexLabel = extNew("TextButton", {
+	local hexLabel = NVMNew("TextButton", {
 		AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -42, 0, 0),
 		Size = UDim2.new(0, 64, 0, HEADER), BackgroundTransparency = 1, AutoButtonColor = false,
-		Font = extFont(Enum.FontWeight.Medium), TextSize = 11, TextColor3 = ExtTheme.Muted,
+		Font = NVMFont(Enum.FontWeight.Medium), TextSize = 11, TextColor3 = NVMTheme.Muted,
 		TextXAlignment = Enum.TextXAlignment.Right, Text = "",
 	}, row)
 	on(hexLabel.MouseButton1Click, function()
@@ -887,67 +887,67 @@ local function extCreateColorPicker(section, name, default, callback)
 		end
 	end)
 
-	local swatch = extNew("Frame", {
+	local swatch = NVMNew("Frame", {
 		AnchorPoint = Vector2.new(1, 0.5), Position = UDim2.new(1, -10, 0, 15),
 		Size = UDim2.fromOffset(24, 14), BackgroundColor3 = default, BorderSizePixel = 0,
 	}, row)
-	extCorner(swatch, 0, 3); extStroke(swatch)
+	NVMCorner(swatch, 0, 3); NVMStroke(swatch)
 
-	local header = extNew("TextButton", {
+	local header = NVMNew("TextButton", {
 		Text = "", BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, HEADER),
 	}, row)
 
-	local holder = extNew("Frame", {
+	local holder = NVMNew("Frame", {
 		Position = UDim2.new(0, 10, 0, HEADER + 4),
 		Size = UDim2.new(1, -20, 0, HOLDER_H), BackgroundTransparency = 1,
 	}, row)
 
-	local svBox = extNew("TextButton", {
+	local svBox = NVMNew("TextButton", {
 		Text = "", AutoButtonColor = false, BackgroundColor3 = Color3.fromHSV(h, 1, 1),
 		BorderSizePixel = 0, Size = UDim2.new(1, 0, 0, SV_H),
 	}, holder)
-	extCorner(svBox, 0, 4)
+	NVMCorner(svBox, 0, 4)
 
-	local white = extNew("Frame", {
+	local white = NVMNew("Frame", {
 		BackgroundColor3 = Color3.new(1, 1, 1), BorderSizePixel = 0,
 		Size = UDim2.fromScale(1, 1), ZIndex = 2,
 	}, svBox)
-	extCorner(white, 0, 4)
-	extNew("UIGradient", { Transparency = NumberSequence.new(0, 1) }, white)
+	NVMCorner(white, 0, 4)
+	NVMNew("UIGradient", { Transparency = NumberSequence.new(0, 1) }, white)
 
-	local black = extNew("Frame", {
+	local black = NVMNew("Frame", {
 		BackgroundColor3 = Color3.new(0, 0, 0), BorderSizePixel = 0,
 		Size = UDim2.fromScale(1, 1), ZIndex = 3,
 	}, svBox)
-	extCorner(black, 0, 4)
-	extNew("UIGradient", { Rotation = 90, Transparency = NumberSequence.new(1, 0) }, black)
+	NVMCorner(black, 0, 4)
+	NVMNew("UIGradient", { Rotation = 90, Transparency = NumberSequence.new(1, 0) }, black)
 
-	local svKnob = extNew("Frame", {
+	local svKnob = NVMNew("Frame", {
 		AnchorPoint = Vector2.new(0.5, 0.5), Size = UDim2.fromOffset(10, 10),
 		BackgroundTransparency = 1, ZIndex = 4,
 	}, svBox)
-	extCorner(svKnob, 1, 0)
-	extStroke(svKnob, Color3.new(1, 1, 1), 2)
+	NVMCorner(svKnob, 1, 0)
+	NVMStroke(svKnob, Color3.new(1, 1, 1), 2)
 
-	local hueTrack = extNew("TextButton", {
+	local hueTrack = NVMNew("TextButton", {
 		Text = "", AutoButtonColor = false, BackgroundColor3 = Color3.new(1, 1, 1),
 		BorderSizePixel = 0, Position = UDim2.new(0, 0, 0, SV_H + 10),
 		Size = UDim2.new(1, 0, 0, HUE_H),
 	}, holder)
-	extCorner(hueTrack, 1, 0)
+	NVMCorner(hueTrack, 1, 0)
 
 	local hueKeys = {}
 	for i = 0, 6 do
 		hueKeys[#hueKeys + 1] = ColorSequenceKeypoint.new(i / 6, Color3.fromHSV(i / 6, 1, 1))
 	end
-	extNew("UIGradient", { Color = ColorSequence.new(hueKeys) }, hueTrack)
+	NVMNew("UIGradient", { Color = ColorSequence.new(hueKeys) }, hueTrack)
 
-	local hueKnob = extNew("Frame", {
+	local hueKnob = NVMNew("Frame", {
 		AnchorPoint = Vector2.new(0.5, 0.5), Size = UDim2.fromOffset(4, HUE_H + 4),
 		BackgroundColor3 = Color3.new(1, 1, 1), BorderSizePixel = 0,
 	}, hueTrack)
-	extCorner(hueKnob, 0, 2)
-	extStroke(hueKnob, ExtTheme.Background, 1)
+	NVMCorner(hueKnob, 0, 2)
+	NVMStroke(hueKnob, NVMTheme.Background, 1)
 
 	local function apply(fire)
 		local color = Color3.fromHSV(h, s, v)
@@ -956,7 +956,7 @@ local function extCreateColorPicker(section, name, default, callback)
 		svKnob.Position = UDim2.fromScale(s, 1 - v)
 		hueKnob.Position = UDim2.new(h, 0, 0.5, 0)
 		hexLabel.Text = "#" .. string.upper(color:ToHex())
-		if fire and callback then extSafe(callback, color) end
+		if fire and callback then NVMSafe(callback, color) end
 	end
 
 	local function sample(pos)
@@ -975,16 +975,16 @@ local function extCreateColorPicker(section, name, default, callback)
 
 	on(header.MouseButton1Click, function()
 		expanded = not expanded
-		extTween(row, { Size = UDim2.new(0.9, 0, 0, expanded and EXPANDED or HEADER) })
+		NVMTween(row, { Size = UDim2.new(0.9, 0, 0, expanded and EXPANDED or HEADER) })
 	end)
-	on(svBox.InputBegan, function(i) if extIsPress(i) then mode = "sv"; sample(i.Position) end end)
-	on(hueTrack.InputBegan, function(i) if extIsPress(i) then mode = "hue"; sample(i.Position) end end)
-	on(UserInputService.InputChanged, function(i) if mode and extIsMove(i) then sample(i.Position) end end)
-	on(UserInputService.InputEnded, function(i) if extIsPress(i) then mode = nil end end)
+	on(svBox.InputBegan, function(i) if NVMIsPress(i) then mode = "sv"; sample(i.Position) end end)
+	on(hueTrack.InputBegan, function(i) if NVMIsPress(i) then mode = "hue"; sample(i.Position) end end)
+	on(UserInputService.InputChanged, function(i) if mode and NVMIsMove(i) then sample(i.Position) end end)
+	on(UserInputService.InputEnded, function(i) if NVMIsPress(i) then mode = nil end end)
 
-	extHover(row, on); apply(false)
+	NVMHover(row, on); apply(false)
 
-	return extFinish(row, {
+	return NVMFinish(row, {
 		Set = function(_, c, f)
 			if typeof(c) == "Color3" then h, s, v = Color3.toHSV(c); apply(f) end
 		end,
@@ -992,41 +992,41 @@ local function extCreateColorPicker(section, name, default, callback)
 	})
 end
 
-local function extCreateFolder(section, name, collapsed)
+local function NVMCreateFolder(section, name, collapsed)
 	local HEADER = 24
 	local open = not collapsed
-	local holder = extNew("Frame", {
-		Name = "ExtFolder", BackgroundColor3 = ExtTheme.Surface, BackgroundTransparency = 0.5,
+	local holder = NVMNew("Frame", {
+		Name = "ExtFolder", BackgroundColor3 = NVMTheme.Surface, BackgroundTransparency = 0.5,
 		BorderSizePixel = 0, Size = UDim2.new(1, 0, 0, HEADER),
-		LayoutOrder = extNextOrder(section), ClipsDescendants = true,
+		LayoutOrder = NVMNextOrder(section), ClipsDescendants = true,
 	}, section)
-	extCorner(holder, 0, 4); extStroke(holder)
+	NVMCorner(holder, 0, 4); NVMStroke(holder)
 
-	local header = extNew("TextButton", {
+	local header = NVMNew("TextButton", {
 		Name = "Header", Text = "", BackgroundTransparency = 1,
 		AutoButtonColor = false, Size = UDim2.new(1, 0, 0, HEADER),
 	}, holder)
 
-	local arrow = extNew("TextLabel", {
+	local arrow = NVMNew("TextLabel", {
 		AnchorPoint = Vector2.new(0, 0.5), Position = UDim2.new(0, 8, 0, HEADER / 2),
 		Size = UDim2.fromOffset(12, 12), BackgroundTransparency = 1,
-		Font = extFont(Enum.FontWeight.Bold), TextSize = 10, TextColor3 = ExtTheme.Accent,
+		Font = NVMFont(Enum.FontWeight.Bold), TextSize = 10, TextColor3 = NVMTheme.Accent,
 		Text = open and "v" or ">", TextXAlignment = Enum.TextXAlignment.Left,
 	}, holder)
 
-	local label = extNew("TextLabel", {
+	local label = NVMNew("TextLabel", {
 		Position = UDim2.new(0, 26, 0, 0), Size = UDim2.new(1, -34, 0, HEADER),
-		BackgroundTransparency = 1, Font = extFont(Enum.FontWeight.SemiBold), TextSize = 11,
-		TextColor3 = ExtTheme.Text, TextXAlignment = Enum.TextXAlignment.Left,
+		BackgroundTransparency = 1, Font = NVMFont(Enum.FontWeight.SemiBold), TextSize = 11,
+		TextColor3 = NVMTheme.Text, TextXAlignment = Enum.TextXAlignment.Left,
 		Text = tostring(name or "Folder"),
 	}, holder)
 
-	local body = extNew("Frame", {
+	local body = NVMNew("Frame", {
 		Name = "Body", Position = UDim2.new(0, 0, 0, HEADER),
 		Size = UDim2.new(1, 0, 0, 0), BackgroundTransparency = 1, ClipsDescendants = true,
 	}, holder)
-	local listLayout = extNew("UIListLayout", { SortOrder = Enum.SortOrder.LayoutOrder, Padding = UDim.new(0, 4) }, body)
-	extNew("UIPadding", {
+	local listLayout = NVMNew("UIListLayout", { SortOrder = Enum.SortOrder.LayoutOrder, Padding = UDim.new(0, 4) }, body)
+	NVMNew("UIPadding", {
 		PaddingTop = UDim.new(0, 4), PaddingBottom = UDim.new(0, 4),
 		PaddingLeft = UDim.new(0, 4), PaddingRight = UDim.new(0, 4),
 	}, body)
@@ -1034,11 +1034,11 @@ local function extCreateFolder(section, name, collapsed)
 	local function render()
 		arrow.Text = open and "v" or ">"
 		local h = open and (listLayout.AbsoluteContentSize.Y + 8) or 0
-		extTween(holder, { Size = UDim2.new(1, 0, 0, HEADER + h) })
-		extTween(body, { Size = UDim2.new(1, 0, 0, h) })
+		NVMTween(holder, { Size = UDim2.new(1, 0, 0, HEADER + h) })
+		NVMTween(body, { Size = UDim2.new(1, 0, 0, h) })
 	end
 
-	local on = extBinder(holder)
+	local on = NVMBinder(holder)
 	on(header.MouseButton1Click, function() open = not open; render() end)
 	listLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function() if open then render() end end)
 	render()
@@ -1046,15 +1046,15 @@ local function extCreateFolder(section, name, collapsed)
 	local f = {}
 	f.Container = holder
 	f.Body = body
-	f.AddToggle = function(_, ...) local r = extCreateToggle(body, ...); task.defer(render); return r end
-	f.AddSlider = function(_, ...) local r = extCreateSlider(body, ...); task.defer(render); return r end
-	f.AddDropdown = function(_, ...) local r = extCreateDropdown(body, ...); task.defer(render); return r end
-	f.AddKeybind = function(_, ...) local r = extCreateKeybind(body, ...); task.defer(render); return r end
-	f.AddTextBox = function(_, ...) local r = extCreateTextBox(body, ...); task.defer(render); return r end
-	f.AddColorPicker = function(_, ...) local r = extCreateColorPicker(body, ...); task.defer(render); return r end
-	f.AddButton = function(_, ...) local r = extCreateButton(body, ...); task.defer(render); return r end
-	f.AddLabel = function(_, ...) local r = extCreateLabel(body, ...); task.defer(render); return r end
-	f.AddSeparator = function() local r = extCreateSeparator(body); task.defer(render); return r end
+	f.AddToggle = function(_, ...) local r = NVMCreateToggle(body, ...); task.defer(render); return r end
+	f.AddSlider = function(_, ...) local r = NVMCreateSlider(body, ...); task.defer(render); return r end
+	f.AddDropdown = function(_, ...) local r = NVMCreateDropdown(body, ...); task.defer(render); return r end
+	f.AddKeybind = function(_, ...) local r = NVMCreateKeybind(body, ...); task.defer(render); return r end
+	f.AddTextBox = function(_, ...) local r = NVMCreateTextBox(body, ...); task.defer(render); return r end
+	f.AddColorPicker = function(_, ...) local r = NVMCreateColorPicker(body, ...); task.defer(render); return r end
+	f.AddButton = function(_, ...) local r = NVMCreateButton(body, ...); task.defer(render); return r end
+	f.AddLabel = function(_, ...) local r = NVMCreateLabel(body, ...); task.defer(render); return r end
+	f.AddSeparator = function() local r = NVMCreateSeparator(body); task.defer(render); return r end
 	f.SetOpen = function(_, v) open = v and true or false; render() end
 	f.IsOpen = function() return open end
 	f.Destroy = function() holder:Destroy() end
@@ -1063,27 +1063,27 @@ local function extCreateFolder(section, name, collapsed)
 	return f
 end
 
-local extNotifyHolder
-local function extGetNotifyHolder()
-	if extNotifyHolder and extNotifyHolder.Parent then return extNotifyHolder end
-	local gui = extNew("ScreenGui", {
+local NVMNotifyHolder
+local function NVMGetNotifyHolder()
+	if NVMNotifyHolder and NVMNotifyHolder.Parent then return NVMNotifyHolder end
+	local gui = NVMNew("ScreenGui", {
 		Name = "NeverLoseModNotify", ResetOnSpawn = false, IgnoreGuiInset = true,
 		DisplayOrder = 1000, ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
 	})
 	if syn and syn.protect_gui then pcall(syn.protect_gui, gui) end
 	gui.Parent = (gethui and gethui()) or CoreGui
-	extNotifyHolder = extNew("Frame", {
+	NVMNotifyHolder = NVMNew("Frame", {
 		AnchorPoint = Vector2.new(1, 1), Position = UDim2.new(1, -16, 1, -16),
 		Size = UDim2.new(0, 260, 0, 0), AutomaticSize = Enum.AutomaticSize.Y,
 		BackgroundTransparency = 1,
 	}, gui)
-	extNew("UIListLayout", {
+	NVMNew("UIListLayout", {
 		SortOrder = Enum.SortOrder.LayoutOrder,
 		HorizontalAlignment = Enum.HorizontalAlignment.Right,
 		VerticalAlignment = Enum.VerticalAlignment.Bottom,
 		Padding = UDim.new(0, 6),
-	}, extNotifyHolder)
-	return extNotifyHolder
+	}, NVMNotifyHolder)
+	return NVMNotifyHolder
 end
 
 
@@ -1193,13 +1193,14 @@ NEVERLOSE = {
 		StrokeColor = Color3.fromRGB(255, 255, 255),
 		ButtonBlackgroundColor = Color3.fromRGB(0, 0, 0),
 		TextColor = Color3.fromRGB(255, 255, 255),
+		Muted = Color3.fromRGB(180, 180, 195),
 		HeadNameStrokeTransparency = 1
 	},
 	_Version="10.C-BLACKWHITE",
 	_Name="NEVERLOSE"
 }
 
-print(NEVERLOSE._Name..":",NEVERLOSE._Version..':',[[https://neverlose.cc/]],": UI BY OWNER BEDOL HUB","__ui")
+print(NEVERLOSE._Name..":",NEVERLOSE._Version..':',[[https://neverlose.cc/]],": UI BY RAPPTEZETYEE THANKS FOR OWNER BEDOL HUB","__ui")
 
 function NEVERLOSE:Theme(name)
 	name = tostring(name or "original"):lower()
@@ -1214,6 +1215,7 @@ function NEVERLOSE:Theme(name)
 		NEVERLOSE.Themes.StrokeColor = Color3.fromRGB(3, 35, 50)
 		NEVERLOSE.Themes.ButtonBlackgroundColor = Color3.fromRGB(2, 5, 22)
 		NEVERLOSE.Themes.TextColor = Color3.fromRGB(255, 255, 255)
+		NEVERLOSE.Themes.Muted = Color3.fromRGB(180, 180, 195)
 		NEVERLOSE.Themes.HeadNameStrokeTransparency = 0.720
 	end
 
@@ -1228,6 +1230,7 @@ function NEVERLOSE:Theme(name)
 		NEVERLOSE.Themes.StrokeColor = Color3.fromRGB(50, 50, 50)
 		NEVERLOSE.Themes.ButtonBlackgroundColor = Color3.fromRGB(26, 26, 26)
 		NEVERLOSE.Themes.TextColor = Color3.fromRGB(255, 255, 255)
+		NEVERLOSE.Themes.Muted = Color3.fromRGB(180, 180, 195)
 		NEVERLOSE.Themes.HeadNameStrokeTransparency = 0.720
 	end
 
@@ -1242,6 +1245,7 @@ function NEVERLOSE:Theme(name)
 		NEVERLOSE.Themes.StrokeColor = Color3.fromRGB(28, 28, 28)
 		NEVERLOSE.Themes.ButtonBlackgroundColor = Color3.fromRGB(13, 13, 13)
 		NEVERLOSE.Themes.TextColor = Color3.fromRGB(255, 255, 255)
+		NEVERLOSE.Themes.Muted = Color3.fromRGB(180, 180, 195)
 		NEVERLOSE.Themes.HeadNameStrokeTransparency = 0.720
 	end
 
@@ -1257,6 +1261,7 @@ function NEVERLOSE:Theme(name)
 		NEVERLOSE.Themes.StrokeColor = Color3.fromRGB(28, 28, 28)
 		NEVERLOSE.Themes.ButtonBlackgroundColor = Color3.fromRGB(13, 13, 13)
 		NEVERLOSE.Themes.TextColor = Color3.fromRGB(255, 255, 255)
+		NEVERLOSE.Themes.Muted = Color3.fromRGB(180, 180, 195)
 		NEVERLOSE.Themes.HeadNameStrokeTransparency = 1
 	end
 end
@@ -1317,8 +1322,11 @@ function NEVERLOSE:AddWindow(NameScriptHub,Text,UICustomSize)
 			TextLabel.TextColor3 = NEVERLOSE.Themes.TextColor
 			TextLabel.TextScaled = true
 			TextLabel.TextSize = 14.000
-			TextLabel.TextStrokeColor3 = NEVERLOSE.Themes.MainColor
-			TextLabel.TextStrokeTransparency = 0.900
+			local TextStroke = Instance.new("UIStroke")
+			TextStroke.Color = NEVERLOSE.Themes.MainColor
+			TextStroke.Transparency = 0.900
+			TextStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Contextual
+			TextStroke.Parent = TextLabel
 			TextLabel.TextWrapped = true
 			TextLabel.TextXAlignment = Enum.TextXAlignment.Left
 			TextLabel.RichText=true
@@ -1340,10 +1348,12 @@ function NEVERLOSE:AddWindow(NameScriptHub,Text,UICustomSize)
 			TweenService:Create(TabButtons,TweenInfo.new(0.3),{Position=UDim2.new(.008,0,0.143,0)}):Play()
 
 			if headd2text then
-				TweenService:Create(headd2text,TweenInfo.new(0.3),{TextTransparency=0,TextStrokeTransparency=0.900}):Play()
+				TweenService:Create(headd2text,TweenInfo.new(0.3),{TextTransparency=0}):Play()
+				local s = headd2text:FindFirstChildOfClass("UIStroke")
+				if s then TweenService:Create(s,TweenInfo.new(0.3),{Transparency=0.900}):Play() end
 			end
 
-			TweenService:Create(UserName,TweenInfo.new(0.3),{TextTransparency=0,TextStrokeTransparency=1}):Play()
+			TweenService:Create(UserName,TweenInfo.new(0.3),{TextTransparency=0,TNVMStrokeTransparency=1}):Play()
 			TweenService:Create(UserImage,TweenInfo.new(0.3),{ImageTransparency=0}):Play()
 			TweenService:Create(outlo,TweenInfo.new(0.3),{BackgroundTransparency=0.7}):Play()
 			TweenService:Create(outlo_2,TweenInfo.new(0.3),{BackgroundTransparency=0.7}):Play()
@@ -1360,10 +1370,12 @@ function NEVERLOSE:AddWindow(NameScriptHub,Text,UICustomSize)
 			TweenService:Create(TabButtons,TweenInfo.new(0.3),{Position=UDim2.new(-1.25,0,0.143,0)}):Play()
 
 			if headd2text then
-				TweenService:Create(headd2text,TweenInfo.new(0.3),{TextTransparency=1,TextStrokeTransparency=1}):Play()
+				TweenService:Create(headd2text,TweenInfo.new(0.3),{TextTransparency=1}):Play()
+				local s = headd2text:FindFirstChildOfClass("UIStroke")
+				if s then TweenService:Create(s,TweenInfo.new(0.3),{Transparency=1}):Play() end
 			end
 
-			TweenService:Create(UserName,TweenInfo.new(0.3),{TextTransparency=1,TextStrokeTransparency=1}):Play()
+			TweenService:Create(UserName,TweenInfo.new(0.3),{TextTransparency=1,TNVMStrokeTransparency=1}):Play()
 			TweenService:Create(UserImage,TweenInfo.new(0.3),{ImageTransparency=1}):Play()
 			TweenService:Create(outlo,TweenInfo.new(0.3),{BackgroundTransparency=1}):Play()
 			TweenService:Create(outlo_2,TweenInfo.new(0.3),{BackgroundTransparency=1}):Play()
@@ -1391,9 +1403,9 @@ function NEVERLOSE:AddWindow(NameScriptHub,Text,UICustomSize)
 
 		ImageButton.MouseButton1Click:Connect(function()
 			toggle_valu=not toggle_valu
+			if not toggle_valu then oldPositionClose = Frame.Position end
 
 			if toggle_valu then
-				oldPositionClose = Frame.Position
 				TweenService:Create(ImageButton,TweenInfo.new(0.5),{
 					Size=UDim2.new(0.0900000036, 0, 0.0900000036, 0),
 					Position=UDim2.new(0.908723712, 0, 0.0239103697, 0),
@@ -1519,8 +1531,11 @@ function NEVERLOSE:AddWindow(NameScriptHub,Text,UICustomSize)
 	HeadName.TextColor3 = NEVERLOSE.Themes.TextColor
 	HeadName.TextScaled = true
 	HeadName.TextSize = 14.000
-	HeadName.TextStrokeColor3 = NEVERLOSE.Themes.MainColor
-	HeadName.TextStrokeTransparency = NEVERLOSE.Themes.HeadNameStrokeTransparency or 0.720
+	local HeadNameStroke = Instance.new("UIStroke")
+	HeadNameStroke.Color = NEVERLOSE.Themes.MainColor
+	HeadNameStroke.Transparency = NEVERLOSE.Themes.HeadNameStrokeTransparency or 0.720
+	HeadNameStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Contextual
+	HeadNameStroke.Parent = HeadName
 	HeadName.TextWrapped = true
 
 	TabButtons.Name = "TabButtons"
@@ -1814,15 +1829,12 @@ function NEVERLOSE:AddWindow(NameScriptHub,Text,UICustomSize)
 
 		local function bedisea()
 			if headd2text then
-				TweenService:Create(headd2text,TweenInfo.new(.1),{
-					TextTransparency = 0.1,
-					TextStrokeTransparency=.95
-				}):Play()
+				local s = headd2text:FindFirstChildOfClass("UIStroke")
+				TweenService:Create(headd2text,TweenInfo.new(.1),{TextTransparency = 0.1}):Play()
+				if s then TweenService:Create(s,TweenInfo.new(.1),{Transparency = 0.95}):Play() end
 				task.wait(.11)
-				TweenService:Create(headd2text,TweenInfo.new(.1),{
-					TextTransparency = 0,
-					TextStrokeTransparency=.9
-				}):Play()
+				TweenService:Create(headd2text,TweenInfo.new(.1),{TextTransparency = 0}):Play()
+				if s then TweenService:Create(s,TweenInfo.new(.1),{Transparency = 0.9}):Play() end
 			end
 		end
 
@@ -1971,6 +1983,16 @@ function NEVERLOSE:AddWindow(NameScriptHub,Text,UICustomSize)
 			end
 
 			table.insert(NEVERLOSE.auto_function,update_section_size)
+
+			Section.Destroying:Connect(function()
+				local list = NEVERLOSE.auto_function
+				for i = #list, 1, -1 do
+					if list[i] == update_section_size then
+						table.remove(list, i)
+						break
+					end
+				end
+			end)
 
 			Section:GetPropertyChangedSignal('Size'):Connect(function()
 				if Section.Size.Y.Offset <= 1 then
@@ -2394,7 +2416,7 @@ function NEVERLOSE:AddWindow(NameScriptHub,Text,UICustomSize)
 				UpdateText()
 
 				-- Fire the keybind callback when the currently bound key is pressed.
-				InputService.InputBegan:Connect(function(Input, GameProcessed)
+				local keyConn = InputService.InputBegan:Connect(function(Input, GameProcessed)
 					if Binding then
 						return
 					end
@@ -2402,6 +2424,9 @@ function NEVERLOSE:AddWindow(NameScriptHub,Text,UICustomSize)
 					if Input.KeyCode == Default then
 						callback(Input.KeyCode)
 					end
+				end)
+				Keybind.Destroying:Connect(function()
+					if keyConn then keyConn:Disconnect(); keyConn = nil end
 				end)
 
 				local KeybindFunctions = {}
@@ -2952,31 +2977,31 @@ function NEVERLOSE:AddWindow(NameScriptHub,Text,UICustomSize)
 			end
 
 			function sectionfunc:AddTextBox(TextBoxName, Placeholder, Default, Callback)
-				return extCreateTextBox(Section, TextBoxName, Placeholder, Default, Callback)
+				return NVMCreateTextBox(Section, TextBoxName, Placeholder, Default, Callback)
 			end
 
 			function sectionfunc:AddColorPicker(ColorName, Default, Callback)
-				return extCreateColorPicker(Section, ColorName, Default, Callback)
+				return NVMCreateColorPicker(Section, ColorName, Default, Callback)
 			end
 
 			function sectionfunc:AddProgressBar(ProgressName, Min, Max, Default)
-				return extCreateProgressBar(Section, ProgressName, Min, Max, Default)
+				return NVMCreateProgressBar(Section, ProgressName, Min, Max, Default)
 			end
 
 			function sectionfunc:AddSeparator()
-				return extCreateSeparator(Section)
+				return NVMCreateSeparator(Section)
 			end
 
 			function sectionfunc:AddInput(InputName, Default, Min, Max, Decimals, Callback)
-				return extCreateInput(Section, InputName, Default, Min, Max, Decimals, Callback)
+				return NVMCreateInput(Section, InputName, Default, Min, Max, Decimals, Callback)
 			end
 
 			function sectionfunc:AddToggleKeybind(ToggleName, DefaultToggle, DefaultKey, ToggleCb, KeyCb, ChangedCb)
-				return extCreateToggleKeybind(Section, ToggleName, DefaultToggle, DefaultKey, ToggleCb, KeyCb, ChangedCb)
+				return NVMCreateToggleKeybind(Section, ToggleName, DefaultToggle, DefaultKey, ToggleCb, KeyCb, ChangedCb)
 			end
 
 			function sectionfunc:AddFolder(FolderName, Collapsed)
-				return extCreateFolder(Section, FolderName, Collapsed)
+				return NVMCreateFolder(Section, FolderName, Collapsed)
 			end
 
 
@@ -3105,8 +3130,11 @@ function NEVERLOSE:KeySystem(TitleName,LinkKey,callback)
 	Title.TextColor3 = NEVERLOSE.Themes.TextColor
 	Title.TextScaled = true
 	Title.TextSize = 14.000
-	Title.TextStrokeColor3 = NEVERLOSE.Themes.MainColor
-	Title.TextStrokeTransparency = 0.860
+	local TitleStroke = Instance.new("UIStroke")
+	TitleStroke.Color = NEVERLOSE.Themes.MainColor
+	TitleStroke.Transparency = 0.860
+	TitleStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Contextual
+	TitleStroke.Parent = Title
 	Title.TextWrapped = true
 
 	PasteKey.Name = "PasteKey"
@@ -3148,8 +3176,11 @@ function NEVERLOSE:KeySystem(TitleName,LinkKey,callback)
 	CopyKey.TextColor3 = NEVERLOSE.Themes.TextColor
 	CopyKey.TextScaled = true
 	CopyKey.TextSize = 14.000
-	CopyKey.TextStrokeColor3 = NEVERLOSE.Themes.MainColor
-	CopyKey.TextStrokeTransparency = 0.760
+	local CopyKeyStroke = Instance.new("UIStroke")
+	CopyKeyStroke.Color = NEVERLOSE.Themes.MainColor
+	CopyKeyStroke.Transparency = 0.760
+	CopyKeyStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Contextual
+	CopyKeyStroke.Parent = CopyKey
 	CopyKey.TextWrapped = true
 
 	UIStroke_2.Color = NEVERLOSE.Themes.StrokeColor
@@ -3173,8 +3204,11 @@ function NEVERLOSE:KeySystem(TitleName,LinkKey,callback)
 	Submit.TextColor3 = NEVERLOSE.Themes.TextColor
 	Submit.TextScaled = true
 	Submit.TextSize = 14.000
-	Submit.TextStrokeColor3 = NEVERLOSE.Themes.MainColor
-	Submit.TextStrokeTransparency = 0.760
+	local SubmitStroke = Instance.new("UIStroke")
+	SubmitStroke.Color = NEVERLOSE.Themes.MainColor
+	SubmitStroke.Transparency = 0.760
+	SubmitStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Contextual
+	SubmitStroke.Parent = Submit
 	Submit.TextWrapped = true
 
 	UIStroke_3.Color = NEVERLOSE.Themes.StrokeColor
@@ -3303,7 +3337,11 @@ function NEVERLOSE:Notification()
 	UIListLayout.VerticalAlignment = Enum.VerticalAlignment.Bottom
 	UIListLayout.Padding = UDim.new(0, 4)
 	function Notification_:Notify(Type,Head,Body,countdown)
-		if (#MainFrame:GetChildren()) > Notification_.MaxNotifications then
+		local count = 0
+		for _, c in ipairs(MainFrame:GetChildren()) do
+			if c.Name == "Notify" then count = count + 1 end
+		end
+		if count >= Notification_.MaxNotifications then
 			return false
 		end
 
@@ -3476,59 +3514,59 @@ function NEVERLOSE:Notify(title, text, duration, kind)
 		error = { tag = "[!]", color = Color3.fromRGB(255, 90, 90) },
 		success = { tag = "[+]", color = Color3.fromRGB(90, 220, 130) },
 		warning = { tag = "[~]", color = Color3.fromRGB(255, 190, 80) },
-		info = { tag = "[i]", color = ExtTheme.Accent },
+		info = { tag = "[i]", color = NVMTheme.Accent },
 	}
 	local icon = kind and ICONS[tostring(kind):lower()] or nil
 
-	local card = extNew("Frame", {
-		BackgroundColor3 = ExtTheme.Background,
+	local card = NVMNew("Frame", {
+		BackgroundColor3 = NVMTheme.Background,
 		BackgroundTransparency = 1,
 		BorderSizePixel = 0,
 		AutomaticSize = Enum.AutomaticSize.Y,
 		Size = UDim2.new(1, 0, 0, 0),
-	}, extGetNotifyHolder())
-	extCorner(card, 0, 4)
-	extStroke(card)
-	extNew("UIListLayout", { SortOrder = Enum.SortOrder.LayoutOrder, Padding = UDim.new(0, 2) }, card)
-	extNew("UIPadding", {
+	}, NVMGetNotifyHolder())
+	NVMCorner(card, 0, 4)
+	NVMStroke(card)
+	NVMNew("UIListLayout", { SortOrder = Enum.SortOrder.LayoutOrder, Padding = UDim.new(0, 2) }, card)
+	NVMNew("UIPadding", {
 		PaddingTop = UDim.new(0, 8), PaddingBottom = UDim.new(0, 9),
 		PaddingLeft = UDim.new(0, 10), PaddingRight = UDim.new(0, 10),
 	}, card)
 
-	extNew("TextLabel", {
+	NVMNew("TextLabel", {
 		BackgroundTransparency = 1, AutomaticSize = Enum.AutomaticSize.Y,
-		Size = UDim2.new(1, 0, 0, 0), Font = extFont(Enum.FontWeight.SemiBold),
-		TextSize = 12, TextColor3 = icon and icon.color or ExtTheme.Text,
+		Size = UDim2.new(1, 0, 0, 0), Font = NVMFont(Enum.FontWeight.SemiBold),
+		TextSize = 12, TextColor3 = icon and icon.color or NVMTheme.Text,
 		TextWrapped = true, TextXAlignment = Enum.TextXAlignment.Left,
 		Text = icon and (icon.tag .. " " .. tostring(title or "")) or tostring(title or ""),
 		LayoutOrder = 1,
 	}, card)
 
 	if text and text ~= "" then
-		extNew("TextLabel", {
+		NVMNew("TextLabel", {
 			BackgroundTransparency = 1, AutomaticSize = Enum.AutomaticSize.Y,
-			Size = UDim2.new(1, 0, 0, 0), Font = extFont(),
-			TextSize = 11, TextColor3 = ExtTheme.Muted,
+			Size = UDim2.new(1, 0, 0, 0), Font = NVMFont(),
+			TextSize = 11, TextColor3 = NVMTheme.Muted,
 			TextWrapped = true, TextXAlignment = Enum.TextXAlignment.Left,
 			Text = tostring(text), LayoutOrder = 2,
 		}, card)
 	end
 
-	extTween(card, { BackgroundTransparency = 0 })
+	NVMTween(card, { BackgroundTransparency = 0 })
 
-	local dismiss = extNew("TextButton", {
+	local dismiss = NVMNew("TextButton", {
 		Text = "", BackgroundTransparency = 1, Size = UDim2.fromScale(1, 1), ZIndex = 100,
 	}, card)
 	dismiss.MouseButton1Click:Connect(function()
 		if card.Parent then
-			extTween(card, { BackgroundTransparency = 1 })
+			NVMTween(card, { BackgroundTransparency = 1 })
 			task.delay(FAST.Time + 0.05, function() if card.Parent then card:Destroy() end end)
 		end
 	end)
 
 	task.delay(duration, function()
 		if card.Parent then
-			extTween(card, { BackgroundTransparency = 1 })
+			NVMTween(card, { BackgroundTransparency = 1 })
 			task.wait(FAST.Time + 0.05)
 			card:Destroy()
 		end
