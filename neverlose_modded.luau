@@ -1704,6 +1704,33 @@ function NEVERLOSE:AddWindow(NameScriptHub,Text,UICustomSize)
 	ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Global
 	ProtectGui(ScreenGui)
 
+	local NVMScale = Instance.new("UIScale")
+	NVMScale.Parent = ScreenGui
+
+	local function apply_scale()
+		local cam = workspace.CurrentCamera
+		if not cam then return end
+		local vp = cam.ViewportSize
+		local w = ooldsize.X.Scale * vp.X + ooldsize.X.Offset
+		local h = ooldsize.Y.Scale * vp.Y + ooldsize.Y.Offset
+		if w <= 0 or h <= 0 then return end
+		local fx = NEVERLOSE.UIScaleFactorX or 0.78
+		local fy = NEVERLOSE.UIScaleFactorY or 0.68
+		NVMScale.Scale = math.min(1, (vp.X * fx) / w, (vp.Y * fy) / h)
+	end
+
+	apply_scale()
+
+	local function hook_cam(cam)
+		if cam then cam:GetPropertyChangedSignal("ViewportSize"):Connect(apply_scale) end
+	end
+
+	hook_cam(workspace.CurrentCamera)
+	workspace:GetPropertyChangedSignal("CurrentCamera"):Connect(function()
+		hook_cam(workspace.CurrentCamera)
+		apply_scale()
+	end)
+
 	Frame.Parent = ScreenGui
 	Frame.Active = true
 	Frame.AnchorPoint = Vector2.new(0.5, 0.5)
